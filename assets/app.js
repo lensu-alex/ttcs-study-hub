@@ -306,8 +306,11 @@ function viewer(doc, start) {
     if (wrap.classList.contains('fake-fs')) return setFake(false);
     if (document.fullscreenElement || document.webkitFullscreenElement) return (document.exitFullscreen || document.webkitExitFullscreen).call(document);
     const f = wrap.requestFullscreen || wrap.webkitRequestFullscreen;
-    if (!f) return setFake(true);
-    try { const r = f.call(wrap); if (r && r.catch) r.catch(() => setFake(true)); } catch { setFake(true); }
+    // iPhone Safari can have the function but not allow it, and then it fails without saying so.
+    if (!f || !(document.fullscreenEnabled || document.webkitFullscreenEnabled)) return setFake(true);
+    const fallback = () => { if (!document.fullscreenElement && !document.webkitFullscreenElement) setFake(true); };
+    try { const r = f.call(wrap); if (r && r.catch) r.catch(fallback); } catch { setFake(true); return; }
+    setTimeout(fallback, 400);
   };
   const toggleRail = () => { const off = root.classList.toggle('no-rail'); store.set('rail', !off); };
   const toggleNotes = () => { const on = root.classList.toggle('with-notes'); store.set('notes', on); $('#notesBtn').setAttribute('aria-pressed', on); };
