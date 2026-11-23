@@ -300,14 +300,16 @@ function viewer(doc, start) {
 
   // The browser's own full screen where it exists; iPhone Safari has none for a page, so there the
   // slide is laid over the whole window instead (the "fake-fs" class).
+  const touch = matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 1;
   const isFs = () => document.fullscreenElement || document.webkitFullscreenElement || wrap.classList.contains('fake-fs');
   const setFake = on => { wrap.classList.toggle('fake-fs', on); document.documentElement.classList.toggle('fs-open', on); };
   const toggleFs = () => {
     if (wrap.classList.contains('fake-fs')) return setFake(false);
     if (document.fullscreenElement || document.webkitFullscreenElement) return (document.exitFullscreen || document.webkitExitFullscreen).call(document);
     const f = wrap.requestFullscreen || wrap.webkitRequestFullscreen;
-    // iPhone Safari can have the function but not allow it, and then it fails without saying so.
-    if (!f || !(document.fullscreenEnabled || document.webkitFullscreenEnabled)) return setFake(true);
+    // On a phone or tablet the overlay is used every time: iPhone Safari either lacks the browser's
+    // full screen or has it and quietly does nothing, and the in-app browsers are no better.
+    if (touch || !f || !(document.fullscreenEnabled || document.webkitFullscreenEnabled)) return setFake(true);
     const fallback = () => { if (!document.fullscreenElement && !document.webkitFullscreenElement) setFake(true); };
     try { const r = f.call(wrap); if (r && r.catch) r.catch(fallback); } catch { setFake(true); return; }
     setTimeout(fallback, 400);
