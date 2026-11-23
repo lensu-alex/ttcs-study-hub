@@ -327,11 +327,8 @@ function viewer(doc, start) {
   $('#notesBtn').onclick = toggleNotes;
 
   let tx = null;
-  // A slide turned on its side (full screen on an upright phone) is swiped along the screen's height.
-  const sideways = () => wrap.classList.contains('fake-fs') && doc.ar >= 1 && innerHeight > innerWidth;
-  const at = t => sideways() ? t.clientY : t.clientX;
-  wrap.addEventListener('touchstart', e => { tx = at(e.touches[0]); }, { passive: true });
-  wrap.addEventListener('touchend', e => { if (tx == null) return; const dx = at(e.changedTouches[0]) - tx; tx = null; if (Math.abs(dx) > 50) go(n + (dx < 0 ? 1 : -1)); }, { passive: true });
+  wrap.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
+  wrap.addEventListener('touchend', e => { if (tx == null) return; const dx = e.changedTouches[0].clientX - tx; tx = null; if (Math.abs(dx) > 50) go(n + (dx < 0 ? 1 : -1)); }, { passive: true });
 
   const onKey = e => {
     if (typing(e) && e.target !== range || e.metaKey || e.ctrlKey || e.altKey) return;

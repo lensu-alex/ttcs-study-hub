@@ -216,17 +216,6 @@ html.fs-open, html.fs-open body { overflow: hidden; }
   .stage-wrap.fake-fs .v-bar { display: none; }
   .stage-wrap.fake-fs .stage { max-width: calc((100dvh - 8px - env(safe-area-inset-top) - env(safe-area-inset-bottom)) * var(--ar)); }
 }
-/*
- * A phone held upright: a wide slide is turned on its side so it fills the screen instead of
- * sitting in a thin band of black. Turn the phone to read it; tap the slide's halves or swipe along it.
- */
-@media (orientation: portrait) {
-  .viewer:not(.portrait) .stage-wrap.fake-fs { overflow: hidden; }
-  .viewer:not(.portrait) .stage-wrap.fake-fs .v-bar { display: none; }
-  .viewer:not(.portrait) .stage-wrap.fake-fs .stage { flex: none;
-    width: min(calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 8px), calc((100vw - 4px) * var(--ar)));
-    max-width: none; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%) rotate(90deg); }
-}
 .fs-close { display: none; }
 .stage-wrap:fullscreen .fs-close, .stage-wrap:-webkit-full-screen .fs-close, .stage-wrap.fake-fs .fs-close {
   display: grid; place-items: center; position: absolute; z-index: 2; width: 44px; height: 44px; border: 0; border-radius: 99px;
