@@ -221,6 +221,7 @@ function viewer(doc, start) {
       <div class="v-main">
         <div class="v-slide">
           <div class="stage-wrap">
+            <button class="fs-close" type="button" aria-label="Exit full screen">✕</button>
             <div class="stage">
               <img id="slide" alt="">
               <button class="hit prev" type="button" aria-label="Previous slide"><span>‹</span></button>
@@ -297,10 +298,16 @@ function viewer(doc, start) {
     }
   }
 
-  const isFs = () => document.fullscreenElement || document.webkitFullscreenElement;
+  // The browser's own full screen where it exists; iPhone Safari has none for a page, so there the
+  // slide is laid over the whole window instead (the "fake-fs" class).
+  const isFs = () => document.fullscreenElement || document.webkitFullscreenElement || wrap.classList.contains('fake-fs');
+  const setFake = on => { wrap.classList.toggle('fake-fs', on); document.documentElement.classList.toggle('fs-open', on); };
   const toggleFs = () => {
-    if (isFs()) (document.exitFullscreen || document.webkitExitFullscreen).call(document);
-    else { const f = wrap.requestFullscreen || wrap.webkitRequestFullscreen; if (f) f.call(wrap); }
+    if (wrap.classList.contains('fake-fs')) return setFake(false);
+    if (document.fullscreenElement || document.webkitFullscreenElement) return (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    const f = wrap.requestFullscreen || wrap.webkitRequestFullscreen;
+    if (!f) return setFake(true);
+    try { const r = f.call(wrap); if (r && r.catch) r.catch(() => setFake(true)); } catch { setFake(true); }
   };
   const toggleRail = () => { const off = root.classList.toggle('no-rail'); store.set('rail', !off); };
   const toggleNotes = () => { const on = root.classList.toggle('with-notes'); store.set('notes', on); $('#notesBtn').setAttribute('aria-pressed', on); };
@@ -310,6 +317,7 @@ function viewer(doc, start) {
   $('#prevBtn').onclick = $('.hit.prev').onclick = () => go(n - 1);
   $('#nextBtn').onclick = $('.hit.next').onclick = () => go(n + 1);
   $('#fsBtn').onclick = toggleFs;
+  $('.fs-close').onclick = toggleFs;
   $('#railBtn').onclick = toggleRail;
   $('#notesBtn').onclick = toggleNotes;
 
@@ -325,11 +333,12 @@ function viewer(doc, start) {
     else if (k === 'Home') { e.preventDefault(); go(1); }
     else if (k === 'End') { e.preventDefault(); go(N); }
     else if (k === 'f' || k === 'F') toggleFs();
+    else if (k === 'Escape' && wrap.classList.contains('fake-fs')) setFake(false);
     else if (k === 't' || k === 'T') toggleRail();
     else if (k === 'e' || k === 'E') toggleNotes();
   };
   document.addEventListener('keydown', onKey);
-  teardown = () => { document.removeEventListener('keydown', onKey); document.title = 'TTCS Study Hub'; };
+  teardown = () => { document.removeEventListener('keydown', onKey); document.title = 'TTCS Study Hub'; document.documentElement.classList.remove('fs-open'); };
   live = { doc, go };
   go(start);
 }
