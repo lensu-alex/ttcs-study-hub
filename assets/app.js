@@ -5,12 +5,13 @@
 const DOCS = window.TTCS_DOCS || [];
 const QUIZ = window.TTCS_QUIZ || {};
 const CMDS = (window.TTCS_CMDS || []).map(c => ({ c: c[0], d: c[1], l: c[2], p: c[3], k: c[4] || 'c', key: c[2] + '|' + c[0] }));
+const THEORY = (window.TTCS_THEORY || []).map(t => ({ q: t[0], a: t[1], l: t[2], p: t[3], k: 't', key: 't|' + t[2] + '|' + t[0] }));
 const byId = Object.fromEntries(DOCS.map(d => [d.id, d]));
 const LECTURES = DOCS.filter(d => d.kind === 'lecture');
 const INFO = DOCS.filter(d => d.kind !== 'lecture');
 Object.keys(QUIZ).forEach(id => QUIZ[id].forEach((q, i) => { q.id = id + ':' + i; q.doc = id; }));
 const ALLQ = LECTURES.flatMap(d => QUIZ[d.id] || []);
-const KIND = { c: 'command', s: 'syntax', f: 'file', n: 'fact' };
+const KIND = { c: 'command', s: 'syntax', f: 'file', n: 'fact', t: 'theory' };
 const NOTES = window.TTCS_NOTES || {};
 const MIX_SIZE = 20;
 
@@ -486,37 +487,43 @@ function quizRun(key) {
 /* ---------- flashcards ---------- */
 function cards() {
   setNav('cards');
-  let lec = store.get('cards.lec', 0), dir = store.get('cards.dir', 'recall'), skip = store.get('cards.skip', false);
+  let lec = store.get('cards.lec', 0), dir = store.get('cards.dir', 'recall'), skip = store.get('cards.skip', false), kind = store.get('cards.deck', 'theory');
   const known = store.get('known', {});
   let deck = [], i = 0, open = false;
   const ASK = { c: 'Which command?', s: 'How do you write it?', f: 'Which file or path?', n: 'What is the value?' };
+  const pool = () => kind === 'theory' ? THEORY : kind === 'cmds' ? CMDS : THEORY.concat(CMDS);
 
   app.innerHTML = `
   <section class="page narrow">
-    <header class="page-head"><h1>Flashcards</h1><p>${CMDS.length} commands, files and numbers from the slides. Flip, judge yourself honestly, move on.</p></header>
+    <header class="page-head"><h1>Flashcards</h1><p>${THEORY.length} theory questions and ${CMDS.length} commands, files and numbers from the slides. Flip, judge yourself honestly, move on.</p></header>
     <div class="filters">
+      <select id="fDeck" aria-label="Deck"><option value="theory">Theory questions</option><option value="cmds">Commands, files, numbers</option><option value="all">Both</option></select>
       <select id="fLec" aria-label="Lecture"><option value="0">All lectures</option>${LECTURES.map(d => `<option value="${d.n}">Lecture ${d.n}</option>`).join('')}</select>
       <select id="fDir" aria-label="Direction"><option value="recall">Show the meaning, recall the command</option><option value="explain">Show the command, explain it</option></select>
       <label class="check"><input id="fSkip" type="checkbox"> Hide cards I know</label>
     </div>
     <div id="cardArea"></div>
   </section>`;
-  $('#fLec').value = lec; $('#fDir').value = dir; $('#fSkip').checked = skip;
+  $('#fLec').value = lec; $('#fDir').value = dir; $('#fSkip').checked = skip; $('#fDeck').value = kind;
+  const showDir = () => { $('#fDir').hidden = kind === 'theory'; };
+  showDir();
 
-  const build = () => { deck = shuffle(CMDS.filter(c => (!lec || c.l === lec) && (!skip || !known[c.key]))); i = 0; open = false; draw(); };
+  const build = () => { deck = shuffle(pool().filter(c => (!lec || c.l === lec) && (!skip || !known[c.key]))); i = 0; open = false; draw(); };
   const draw = () => {
     const area = $('#cardArea');
-    if (!deck.length) { area.innerHTML = `<div class="empty"><h2>No cards left here</h2><p>You have marked every card in this selection as known.</p><button class="btn" id="resetKnown" type="button">Start over with all of them</button></div>`; $('#resetKnown').onclick = () => { CMDS.forEach(c => { if (!lec || c.l === lec) delete known[c.key]; }); store.set('known', known); build(); }; return; }
+    if (!deck.length) { area.innerHTML = `<div class="empty"><h2>No cards left here</h2><p>You have marked every card in this selection as known.</p><button class="btn" id="resetKnown" type="button">Start over with all of them</button></div>`; $('#resetKnown').onclick = () => { pool().forEach(c => { if (!lec || c.l === lec) delete known[c.key]; }); store.set('known', known); build(); }; return; }
     if (i >= deck.length) { area.innerHTML = `<div class="empty"><h2>End of the deck</h2><p>${deck.filter(c => known[c.key]).length} of ${deck.length} marked as known.</p><button class="btn" id="reshuffle" type="button">Shuffle and go again</button></div>`; $('#reshuffle').onclick = build; return; }
-    const c = deck[i], recall = dir === 'recall';
+    const c = deck[i], theory = c.k === 't', recall = dir === 'recall';
     const cmd = `<code class="card-cmd">${esc(c.c)}</code>`, meaning = `<span class="card-text">${esc(c.d)}</span>`;
+    const front = theory ? `<span class="card-text">${fmt(c.q)}</span>` : recall ? meaning : cmd;
+    const back = theory ? `<span class="card-answer">${fmt(c.a)}</span>` : recall ? cmd : meaning;
     area.innerHTML = `
-      <div class="deck-meta"><span>Card ${i + 1} of ${deck.length}</span><span>${CMDS.filter(x => known[x.key] && (!lec || x.l === lec)).length} known</span></div>
+      <div class="deck-meta"><span>Card ${i + 1} of ${deck.length}</span><span>${pool().filter(x => known[x.key] && (!lec || x.l === lec)).length} known</span></div>
       <button class="card${open ? ' open' : ''}" id="card" type="button" aria-label="Flip the card">
         <span class="card-tag">Lecture ${c.l} · ${KIND[c.k]}</span>
-        <span class="card-ask">${recall ? ASK[c.k] : 'What does it do?'}</span>
-        ${recall ? meaning : cmd}
-        ${open ? `<span class="card-rule"></span>${recall ? cmd : meaning}` : '<span class="card-flip">Click or press Space to flip</span>'}
+        ${theory ? '' : `<span class="card-ask">${recall ? ASK[c.k] : 'What does it do?'}</span>`}
+        ${front}
+        ${open ? `<span class="card-rule"></span>${back}` : '<span class="card-flip">Click or press Space to flip</span>'}
       </button>
       <div class="card-actions">
         ${open ? `<button class="btn ghost" id="again" type="button">Still learning <kbd>1</kbd></button><button class="btn" id="got" type="button">Got it <kbd>2</kbd></button><a class="card-src" href="#/doc/c${c.l}/${c.p}">Slide ${c.p} →</a>` : '<button class="btn" id="flip" type="button">Show answer</button>'}
@@ -527,6 +534,7 @@ function cards() {
   const flip = () => { if (i < deck.length) { open = !open; draw(); } };
   const judge = ok => { const c = deck[i]; if (!c) return; if (ok) known[c.key] = 1; else delete known[c.key]; store.set('known', known); i++; open = false; draw(); };
 
+  $('#fDeck').onchange = e => { kind = e.target.value; store.set('cards.deck', kind); showDir(); build(); };
   $('#fLec').onchange = e => { lec = +e.target.value; store.set('cards.lec', lec); build(); };
   $('#fDir').onchange = e => { dir = e.target.value; store.set('cards.dir', dir); open = false; draw(); };
   $('#fSkip').onchange = e => { skip = e.target.checked; store.set('cards.skip', skip); build(); };
