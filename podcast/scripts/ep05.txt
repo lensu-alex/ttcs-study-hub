@@ -1,0 +1,70 @@
+# Episode 5: Shell programming
+A: Welcome back to the TTCS podcast. This is episode five, I'm Alex.
+B: And I'm Sam. Last time was processes, pipes and signals. Today?
+A: Today is lecture five, shell programming. How to write programs in the shell's own language: variables, tests, if, loops and functions. And this one matters twice, because the project has to be written in bash or awk only.
+B: So if I sleep through this one, the project sleeps too.
+A: Pretty much. Why scripts at all? A script gives one name to a sequence of commands you keep typing, with a little logic around them. No compiling, so they're quick to write. The operating system itself starts its services with scripts. And they should be portable, running on other machines too.
+B: Which shell, though? There seem to be dozens.
+A: Four on the slide. S H, the Bourne shell, the oldest, with few features, but on every Unix at slash bin slash s h. C S H, the C shell, which imitates C. K S H, the Korn shell, which mixes the two. And bash, the Bourne Again shell, the most common today, with lots of extras.
+B: So always use bash, since it has the most features.
+A: That's the catch. A script that uses bash extras won't run under plain s h, so it's less portable. If a script must run anywhere, write it for s h.
+B: Okay. Variables.
+A: You create one just by assigning to it: x equals one, with no spaces. To use the value you put a dollar sign in front, so echo dollar sign x prints one.
+B: What happens if I put spaces around the equals sign? I always do that in Python.
+A: Then the shell reads it as "run a command called x, with the arguments equals and one". Classic question. And a variable created like that is local: it exists only in the current shell, not in the programs it starts.
+B: And the other kind?
+A: Environment variables, handed down to every program the shell starts, its child processes. Examples: HOME, PATH, SHELL, LANG. env prints them all, and export creates one. Export means "also give this variable to the programs I start". Set V equals two, start a child bash, and echo dollar sign V prints nothing. Export V first, and the child prints two.
+B: Like a family recipe. If you don't write it down and pass it on, the kids don't get it.
+A: Exactly. Next, two things that get replaced by a computed value. Dollar sign with a command in brackets is command substitution: the command's output goes in that place, so x equals dollar, bracket, pwd stores the current directory. Dollar sign with double brackets is arithmetic: one plus one gives two.
+B: I remember a slide with x plus plus that confused everyone.
+A: Start from x equals one. x plus plus gives one, then x becomes two: use first, increase after. Again, you get two, and x becomes three. Then plus plus x increases first, so you get four. That change to x is what "side effects" means. Now quotes, which decide how much the shell interprets. Single quotes: nothing is interpreted, so dollar sign x is printed literally. Double quotes: variables and commands are still replaced, everything else is literal. Only three characters stay special inside double quotes: the dollar sign, the back quote, and the backslash.
+B: And back quotes?
+A: The old way of writing command substitution. Prefer the dollar bracket form, which is easier to read and can be nested. And a rule of thumb: put double quotes around variables, so file names with spaces stay one word.
+B: Then there's a slide repeated from lecture three.
+A: The connectors. A semicolon B runs one after the other. A, double ampersand, B runs B only if A succeeded. A, double pipe, B runs B only if A failed. And dollar sign question mark holds the exit status of the last command, where zero means success.
+B: And A, double ampersand, B, double pipe, C?
+A: Works roughly like "if A then B else C". Roughly, because C also runs if B itself fails.
+B: Okay, so what actually is a script?
+A: A text file with commands, exactly as you'd type them. It isn't compiled: an interpreter reads and executes it line by line, while a compiler translates the whole source into machine code first. Shells are interpreters, like python and awk.
+B: And the funny first line with the hash and exclamation mark.
+A: That's the shebang. It names the interpreter that runs the script, by full path, like slash bin slash s h. The portable form is slash usr slash bin slash env, then python, which finds python through the PATH. Anywhere else, a hash starts a comment.
+B: Then to run it?
+A: Three steps. Write it, say hello dot s h. Make it executable with chmod plus x. Run it with dot slash hello dot s h.
+B: Why the dot slash? It's right there in the folder.
+A: Because the current directory isn't in the PATH. The alternative, s h hello dot s h, hands the file straight to the interpreter: no execute permission needed, and the shebang is ignored. Good exam comparison.
+B: Now the dollar sign variables. There are a lot.
+A: Dollar sign one, two, and so on are the arguments, in order; from the tenth on you need curly braces. Dollar sign zero is the script's own name. Dollar sign hash is how many arguments. Dollar sign question mark is the last exit status. Dollar sign dollar sign is the script's own P I D. And dollar sign exclamation mark is the P I D of the last command started in the background.
+B: And dollar star versus dollar at?
+A: Both mean all the arguments. The difference shows inside double quotes: dollar star becomes one single string, dollar at keeps each argument separate. Use dollar at. Then there's shift, which throws away dollar sign one and moves the rest down, so the second argument becomes the first.
+B: Like a queue at the bakery. The first person leaves and everyone steps forward.
+A: Exactly. Now conditions. The if statement: if, a test command, then, some commands, optionally elif and else, and it ends with f i, which is "if" backwards. The key idea: the condition is a command. if runs it and looks at its exit status. Zero means true and takes the then branch, anything else means false.
+B: So there's no true or false type?
+A: None. True just means "the command succeeded". So you can write "if grep finds the word", sending its output to slash dev slash null since you only want the yes or no.
+B: But what about "is this number bigger"?
+A: For that there's the test command, which answers through its exit status. Test and a pair of square brackets are the same thing. The opening square bracket is actually a command name, which is why you must put spaces after it and before the closing bracket.
+B: Ah, that's why my script kept failing in the lab.
+A: Very common. For numbers you use letter codes: dash e q equal, dash n e not equal, dash g t greater than, dash g e greater or equal, dash l t less than, dash l e less or equal.
+B: Why not just use the less-than and greater-than signs?
+A: Because those already mean redirection in the shell. For strings: dash z is true if the string is empty, dash n if it's not empty, a single equals sign for the same text, and exclamation mark equals for different text. Here's a favourite question: is zero seven equals seven true?
+B: Yes?
+A: With the equals sign, no, because it compares text, and the text zero seven isn't the text seven. With dash e q it's true, because that compares numbers. For files: dash e, does it exist; dash f, is it a regular file; dash d, is it a directory; and dash r, dash w, dash x, can I read, write or execute it. You can combine tests with dash a for and, dash o for or, and exclamation mark for not.
+B: Now loops.
+A: while repeats a block as long as its command succeeds. The usual counter: set i to one, while i is less than or equal to ten, echo i and set i to the arithmetic i plus one. Forget that last line and it never ends. until is while turned around: it repeats as long as the command fails. Like trying to ping a server every five seconds until it answers.
+B: And for?
+A: for takes a list of words and runs the block once per word, like every file matching star dot c. bash also has a C-style for loop with a counter, but plain s h doesn't understand it, so it's not portable.
+B: And case?
+A: case compares one value against several patterns and runs the first match. It's the shell's switch. Each branch ends with two semicolons, a star pattern is the default, and the block ends with e s a c, "case" backwards. The patterns are shell wildcards, not regular expressions.
+B: Last big thing: functions.
+A: A shell function is a named group of commands, but it can't hand back a value the way a C function does. Three ways to get a result out: change a global variable, print the result and capture it with command substitution, or use return with a small number, read through dollar sign question mark, meant for success or failure.
+B: And exit in a function ends the function.
+A: No, careful. return ends the function. exit ends the whole script. Another thing that surprises people: in the shell, all variables are global, even those created inside a function. Only the arguments, dollar sign one, two, dollar at, belong to each call. In the scope example, the function sets a to ten, and afterwards the script prints a is ten. bash has the keyword local to change that; s h doesn't.
+B: What about libraries?
+A: A function library is a file with only function and variable definitions, and no shebang line, because it's never run on its own. A script loads it with source, or its short form, a single dot. That runs the file inside the current shell, so the definitions stay. Run it as a normal command and it would execute in a separate process, and everything would vanish when that process ended.
+B: Any last tips?
+A: Three. Save dollar sign question mark in a variable immediately, because every command overwrites it, even an echo. To read a file line by line, pipe it into a while read loop, which stops when read fails at the end of the file. And to debug, run the script with s h dash x: each command is printed with a plus sign, variables already replaced.
+B: Let me recap. One: no spaces around the equals sign, and export passes a variable to child processes.
+A: Good.
+B: Two: single quotes interpret nothing, double quotes still replace variables and commands. Three: if tests a command's exit status, zero is true, and the square bracket is a command, so it needs spaces.
+A: Keep going.
+B: Four: dash e q compares numbers, equals compares text, so zero seven equals seven is false as text. Five: while runs while the command succeeds, until while it fails, and the C-style for is bash only. Six: all variables are global, return ends a function, exit ends the script, and libraries are loaded with source.
+A: That's it. Next time, in episode six: filters and text processing, with cut, paste, tr, sed and awk. See you there.

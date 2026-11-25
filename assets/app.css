@@ -342,3 +342,17 @@ html.fs-open, html.fs-open body { overflow: hidden; }
   .res { grid-template-columns: 96px minmax(0, 1fr); gap: 12px; }
 }
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* podcast */
+.pod { list-style: none; margin: 0; padding: 0; border-top: 1px solid var(--line); }
+.pod-ep { padding: 20px 0; border-bottom: 1px solid var(--line); }
+.pod-head { display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 12px; align-items: baseline; }
+.pod-head h3 { font-size: 20px; }
+.pod-meta { font-size: 13.5px; color: var(--muted); margin-top: 4px; }
+.pod audio { width: 100%; margin-top: 12px; }
+.pod details { margin-top: 8px; }
+.pod summary { cursor: pointer; font-size: 14px; color: var(--accent); }
+.pod-tx { max-height: 420px; overflow: auto; margin-top: 8px; padding: 4px 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+.pod-tx p { margin: 10px 0; font-size: 15px; }
+.pod-tx b { color: var(--accent); margin-right: 4px; }
+.pod-speed { font-size: 14px; color: var(--muted); display: flex; gap: 8px; align-items: center; }

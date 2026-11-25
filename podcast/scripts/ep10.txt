@@ -1,0 +1,70 @@
+# Episode 10: Compiling, linking, debugging and make
+A: Welcome back to the T T C S podcast. This is episode ten, and today we cover lecture ten: compiling, linking, debugging and make.
+B: Hi everyone. So this is the lecture where we finally turn our own C code into something that runs?
+A: Exactly. How C source code becomes a program, how to find bugs in it with the debugger G D B, and how a tool called make automates the building. Two distinctions carry the whole lecture: compiling versus linking, and static versus dynamic libraries.
+B: Two distinctions. I can handle two.
+A: Let's follow the order things happen. You write the source, a text file like hello dot c. The compiler translates that one file into machine code, and the result is an object file, hello dot o.
+B: So the object file is the program. I can run it.
+A: Not yet, and that's a classic exam question. The object file is machine code, but it still has blanks. Your code calls printf, but printf isn't defined in your file, so every call to an outside function is a hole waiting to be filled.
+B: And who fills the holes?
+A: The linker. It joins your object files with libraries, which are collections of already compiled functions, and produces the executable. The compiler translates, the linker assembles.
+B: Like writing an essay with notes saying "insert the chart from chapter three here", and the linker is the person who actually glues the chart in.
+A: Nice. The linker can glue in two ways. A static executable has the library code copied into it: a bigger file, but it needs nothing else to run. A dynamic executable contains only your code plus small placeholders called stubs. The libraries stay separate files and are attached when the program runs. It's smaller, and one copy of a library serves every program that uses it.
+B: So the dynamic one has to go find its libraries later. When exactly?
+A: Two options. Option one is at load time: before the program starts, the operating system finds and loads every library it uses. If even one is missing, the program doesn't start at all. That's the familiar "error while loading shared libraries" message.
+B: I've seen it, and I panicked. Option two?
+A: At run time, also called lazy loading. The program starts with only what it strictly needs. The first time it calls a function from a library that isn't loaded yet, it pauses, the library is loaded, and it continues. Faster start, and unused libraries are never loaded. But a missing library is discovered late, maybe in the middle of your work, and the program is aborted right there.
+B: So load time is "check everything at the door", run time is "deal with it when it comes up".
+A: Perfect. The lecture's diagram names three moments: compile time, when source becomes an object module; load time, when the linker builds the executable and the loader puts it in memory; and execution time, when the program runs and dynamic libraries get attached.
+B: Got it. So what do we actually type?
+A: On Linux the standard compiler is G C C, the G N U Compiler Collection. On macOS it's clang, from the L L V M project. Whichever is installed, the command c c, for C compiler, always exists and runs it, which is why scripts and Makefiles use c c.
+B: And the simplest compilation is just c c, space, hello dot c?
+A: Yes. With no other instructions the executable is called a dot out, short for assembler output, a name left over from the first Unix. You run it as dot slash a dot out.
+B: Why the dot slash?
+A: The shell only searches the directories in the PATH variable, and the current directory isn't one of them. Dot slash means "the file right here". For a nicer name, add dash o: c c dash o hello hello dot c produces a file called hello.
+B: And dash c, lowercase, is something else?
+A: Very different. Dash c means compile only, don't link. You get hello dot o and it stops. In a real project each source file becomes its own object file and one link at the end joins them, so when you change one file, only that one is recompiled. That's exactly what make exploits.
+B: Now libraries.
+A: To link with one, add dash l plus its short name at the end of the command. Dash l m links the math library, where sine and square root live. The real file name is the short name with lib in front and dot a or dot so behind: lib m dot a or lib m dot so. Dot a, archive, is a static library. Dot so, shared object, is a dynamic one.
+B: A library called m. Very minimalist. Can I make my own?
+A: Yes. For a static one, compile to an object file, then the archiver, a r, packs it into lib hello dot a. A static library is just a bundle of object files. Then you link: g c c dash o main main dot c, dash capital L dot, dash small l hello.
+B: Two L's. Why?
+A: Capital L says where to look for libraries, here dot, the current directory. Small l says which library. Remember it as capital L for location.
+B: And once it's linked statically, I could delete lib hello dot a and main still works?
+A: Yes, the code was copied in. For a dynamic library you compile with dash f p i c, position independent code, because a shared library can land at a different memory address in each program, so its code must work anywhere. Then g c c dash shared builds lib hello dot so, and you link the same way.
+B: And then it just runs.
+A: Maybe. A dynamic program needs its libraries every time it starts. The command l d d main lists the libraries it needs and where each was found; "not found" means it won't start. If the library is in a standard place, registered with l d config, you're fine. Otherwise you tell the loader where to look with the variable L D underscore library underscore path, for example set to dot just before dot slash main.
+B: Wait, I already told it where with capital L. Isn't that enough?
+A: That's the trap, and it's very likely on the test. Capital L helps the linker, at build time. L D library path helps the loader, at run time. Two different moments, so you often need both.
+B: Like telling the builder where the bricks are, and separately telling the new tenant where the keys are.
+A: Close enough. Now the four compiler options you'll actually use. Dash o picks the output name. Dash W all, warnings all, makes the compiler point out suspicious code: always use it. Dash g includes debug information, line numbers and variable names. And dash capital O plus a number sets optimization: O zero is none, O two is usual for finished programs.
+B: So for debugging I want maximum optimization so it runs faster?
+A: The opposite. For debugging you combine dash g with dash O zero. Optimization rearranges the code, and the debugger then seems to jump randomly between lines.
+B: Makes sense. So, the debugger.
+A: A debugger lets you stop a running program and look inside. Three words. A breakpoint is a place where execution stops: a function or a line. A backtrace is the chain of calls that led here: main called decompress, which called zip decompress. It answers "how did I get here?". And a watchpoint stops when a value changes, wherever that happens. It answers "who is modifying this variable?"
+B: Breakpoint is a place, watchpoint is a value, backtrace is the history.
+A: That's the exam answer in one line. A typical G D B session: compile with dash g and dash O zero, start g d b hello, type break main, then run. It stops at the first line of main, before executing it. Print x shows a variable, next executes one line, continue runs to the next breakpoint or the end, and quit leaves.
+B: And step is just another name for next?
+A: Almost, but no. Both run one line, but step goes into function calls, while next treats the call as one line and stops after it. And backtrace, or b t, shows the call chain.
+B: Step goes in, next goes over. Now make.
+A: A real program has many files that depend on each other and must be built in the right order. Typing every command by hand doesn't scale. So you write the dependencies and commands once, in a file called Makefile, and the command make reads it and runs whatever is needed.
+B: What's inside a Makefile?
+A: A list of rules, each with three parts. The target is the file you want to produce. The dependencies are the files it's made from. The commands say how to make it. You write the target, a colon, the dependencies, and the commands on the lines below.
+B: And how does make know what's needed?
+A: It compares modification times. If the target is missing, or older than any of its dependencies, it runs the commands. Otherwise it does nothing. Run make twice and the second time it says the program is up to date.
+B: Like a baker who only bakes a new cake if it's older than the ingredients.
+A: A strange bakery, but yes. One warning: command lines must begin with a real tab character, not spaces. The error "missing separator" means exactly that.
+B: I will definitely make that mistake. Usual targets?
+A: Plain make builds the first target, by convention called all, which just depends on the program. A target called clean deletes the results, so make clean wipes the build. And make hello builds just that one target.
+B: The slides also had strange symbols with dollar signs.
+A: Shortcuts inside commands. Dollar at means the target, think "at, where we're going". Dollar caret means all the dependencies. Dollar less than means the first dependency. And a generic rule written dot c dot o colon says how to make any object file from the C file with the same name, so one rule covers every source file.
+B: So you put variables at the top, like the program name and the list of sources, and the rules never mention a file name directly.
+A: Exactly. Adding a source file to the project means changing one line.
+B: My brain is now an object file with a few blanks. Can we link it with a recap?
+A: Let's do it. One: the compiler turns one source file into an object file with blanks; the linker fills them in and produces the executable. Two: static executables copy the library code in; dynamic ones keep stubs and load the dot so files at load time, or lazily at run time.
+B: Three: capital L tells the linker where to look at build time, small l says which library, and L D library path tells the loader where to look at run time.
+A: Four: debug with dash g and dash O zero. A breakpoint is a place, a watchpoint is a value, a backtrace is the call chain, and step goes into functions while next doesn't.
+B: Five: a Makefile rule is target, dependencies, commands, and make rebuilds only if the target is missing or older than a dependency.
+A: And command lines start with a tab.
+B: Tab, not spaces. I'll tattoo that somewhere.
+A: Please don't. Thanks for listening. Next time we leave our own machine behind and talk about networking.

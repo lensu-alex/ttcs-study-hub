@@ -1,0 +1,68 @@
+# Episode 1: Computer systems and the operating system
+A: Hi, and welcome to the T T C S podcast. T T C S stands for Tools and Techniques in Computer Science, the course taught by Vlad Olaru at the University of Bucharest. I'm Alex.
+B: And I'm Sam. I'm the one who's taking the course and asking all the questions you were too shy to ask.
+A: Perfect. The plan for this series is simple: we go through the course lecture by lecture, one episode each, and we explain the ideas in plain language. All the examples in the course are on Linux, so that's what we'll talk about too.
+B: Before we start, the question everyone actually asks first. How is this course graded?
+A: Fair. There are one hundred points in total. The laboratory gives thirty points, in weeks one to seven, and only labs two to seven are graded. You have to be there, and a missed lab can't be made up later.
+B: So no skipping labs and hoping to catch up. Got it. What about the rest?
+A: The project gives thirty five points. That's weeks eight to fourteen, in teams of two or three, chosen from a project list and worked on during lab hours. Everyone in the team gets the same grade. And the last thirty five points come from the verification, the final test on the lecture material. In Romanian it's called verificare.
+B: And to pass?
+A: At least fifty out of one hundred. Notice that the lab and the project together can give you sixty five points, so they matter more than the test. But the test is what this podcast is really for.
+B: Good, because the test is the part I'd rather not improvise. What's the course actually trying to teach me?
+A: The everyday toolbox of a computer scientist. Being comfortable in a terminal, typing commands instead of clicking. Writing scripts so the computer repeats boring tasks for you. Knowing that Linux, macOS and other Unix systems share the same ideas. Some networking basics, and the system services that run in the background.
+B: Okay, enough admin. Lecture one, please.
+A: Lecture one in one sentence: what a computer is made of, and what the operating system is and does for you. It's the most theoretical lecture of the course, but the vocabulary comes back in every later one. Hardware, kernel, system program, service. If those words are clear, the rest is much easier.
+B: So start from the bottom.
+A: A computer system has four layers. At the bottom, the hardware: the C P U, which is the processor, the memory, and the I O devices, meaning input and output devices like the keyboard, the disk, the screen and the network card. On top of that, the operating system. Above it, the application programs, like a browser, a compiler or a game. And at the top, the users.
+B: Users meaning people like me.
+A: Not only people. That's a classic trick question. Another program or even another computer asking for something also counts as a user.
+B: Huh. So my laptop is a user of some server when it loads a web page.
+A: Exactly. And here's the important rule about these layers: each layer only talks to its neighbours. You talk to applications. Applications ask the operating system. And only the operating system touches the hardware.
+B: So a program never just writes to the disk itself?
+A: Never directly. It asks the operating system to do it. Think of a restaurant. You, the customer, never walk into the kitchen. You tell the waiter, the waiter tells the kitchen. The operating system is the waiter, and also the manager who decides whose order gets cooked first.
+B: Okay. Now what does the hardware look like inside?
+A: Each device, a disk, a keyboard, a network card, is driven by a small chip called a device controller. The processors and all the controllers are connected by one shared set of wires called the bus, which also leads to memory.
+B: One shared set of wires for everything? That sounds like a traffic jam.
+A: It kind of is. The slide says the C P U and the devices execute concurrently, competing for memory access cycles. In plain words: they all work at the same time, they all want to use memory, but the bus lets only one of them use it at any instant. So they take turns, very, very fast.
+B: Like a single-lane bridge with very quick cars.
+A: Nice, yes. Now three relationships to know. First, C P U and memory. The C P U keeps fetching the next instruction from memory and executing it, which is called the instruction execution cycle. It also has a cache, a small, very fast memory inside the processor that keeps recently used data close by.
+B: Like keeping your most used pens on the desk instead of in the drawer.
+A: Exactly. Second, C P U and devices. The C P U sends an I O request, something like "read this block from the disk". The disk is slow, so the C P U goes off and does other work. When the device is done, it raises an interrupt.
+B: And an interrupt is the device yelling "I'm done"?
+A: Pretty much. It's a signal that makes the C P U stop what it's doing and handle the event. Think of a doorbell. You don't stand at the door waiting for the delivery, you do other things, and the bell interrupts you when it arrives.
+B: And the third one?
+A: Devices and memory, through D M A, direct memory access. With D M A, the device copies data straight into memory, without passing every single byte through the C P U.
+B: Okay, I think I have the hardware. So what exactly is the operating system?
+A: Here's the definition to remember: the operating system is a program that sits between the user and the hardware. And it has three goals. One, run your programs. Two, make the computer convenient to use. Three, use the hardware efficiently.
+B: Convenient how? It doesn't feel convenient when it crashes.
+A: Ha. Convenient through abstractions. An abstraction is a simple idea that hides ugly details. You think "file". The disk only knows numbered blocks. You think "network connection". The network card only sees bits. The operating system invents the nice idea and does the messy translation for you.
+B: Does the operating system do the same job everywhere?
+A: It depends on who you ask. A normal user wants the machine to be easy and fast and doesn't care how resources are shared. On a big shared computer, like a server or a supercomputer with many users at once, the operating system is mainly a resource allocator, deciding who gets what, and a control program, keeping programs from misbehaving.
+B: And phones?
+A: Phones and tablets have little memory and a battery, so the operating system is tuned for usability and battery life. And embedded systems, like the computer inside a car or a washing machine, may have no screen or keyboard at all. They just run.
+B: So what actually counts as the operating system itself?
+A: Nobody agrees on an exact definition of an operating system, so the course uses a practical one. The kernel is the one program that runs all the time, from boot to shutdown. That's the heart of the operating system. System programs come with the operating system but are not part of the kernel, for example the shell, the ls command, or the login program. Applications are everything else.
+B: So the shell is part of the kernel?
+A: No, careful, that's exactly the mix-up the exam likes. The shell is a system program. It ships with the operating system, but it's not the kernel. The kernel is only the part that's always running underneath.
+B: Got it. Kernel, always on. Shell, a program that comes in the box.
+A: Good. Modern systems also ship middleware, which is ready-made building blocks for programmers, like databases, multimedia or graphics libraries. And you might see G P O S, general-purpose operating system, meaning one built to run any kind of program, like Linux or Windows.
+B: Okay. The lecture then lists services. How many are there?
+A: Quite a few, split into two groups. First, services that help the user. The user interface, which can be a command line, a graphical interface with windows, a touchscreen, or batch, where commands are put in a file and run with nobody watching. Then program execution: load a program into memory, run it, end it, normally or with an error.
+B: Keep going, I'm writing.
+A: I O operations: programs can't touch devices themselves, so the operating system reads and writes for them. File manipulation: create, delete, read, write and search files and directories, and control who may access them. Communication: two processes, which means running programs, exchange data, either on the same machine or over a network.
+B: How do they exchange it?
+A: Two ways. Shared memory, where both see the same piece of memory, like two people writing on the same whiteboard. Or message passing, where one sends and the other receives, like passing notes. Lecture four goes into both. And the last user service is error detection: things break, in the hardware or in a program, say a division by zero, and the operating system must notice and react so the rest of the system stays correct.
+B: And the second group?
+A: Services that keep the whole system working when many users share it. Resource allocation: handing out C P U time, memory, disk space and devices. Execution logging, also called accounting: keeping track of who used how much of what. And protection and security.
+B: Aren't protection and security the same thing?
+A: That's a favourite exam question, so let's be precise. Protection is control inside the system: one process must not be able to damage another. Security is defence against outsiders: logging in with a password, blocking invalid access attempts.
+B: So protection is the walls between flats in a building, and security is the lock on the front door.
+A: That's a great way to put it. Now, how does a program actually ask for any of these services? Through system calls. A system call is a function call into the kernel. It's the only door through which a program can ask the operating system for something. Open, read, write, fork and kill are all system calls.
+B: So the restaurant has exactly one service window, and that's the system call.
+A: Exactly. Last topic: building an operating system yourself. Usually it comes pre-installed, but you can build one from source code. The steps are always the same: get the source, configure it for your hardware, compile it, install it on the disk, and boot into it. On Linux a tool called make does the work, and the compiled kernel is a file called v m linuz. Optional kernel pieces, mostly device drivers, are called modules and are loaded only when needed.
+B: Okay, let me try a recap and you tell me if I mess it up.
+A: Go.
+B: One: four layers, hardware, operating system, applications, users, and a user can also be a program or another computer. Two: the operating system sits between the user and the hardware, and it makes things convenient with abstractions, like files instead of disk blocks.
+A: Good so far.
+B: Three: interrupts are the doorbell, and D M A lets devices copy straight into memory without the C P U carrying every byte. Four: the kernel is the program that runs from boot to shutdown, while the shell and ls are system programs. Five: protection is inside the system, security is against outsiders. Six: system calls are the only door into the kernel.
+A: Perfect, that's exactly what to remember. Next episode we press the power button and follow the computer from boot to login, then meet the shell and files. See you there.

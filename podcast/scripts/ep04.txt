@@ -1,0 +1,72 @@
+# Episode 4: File tools, processes, I P C and signals
+A: Welcome back to the TTCS podcast. This is episode four, and I'm Alex.
+B: And I'm Sam. Last time we did the command interpreter, files and permissions. What's on the menu today?
+A: Lecture four has four parts. First, the last few file commands, including the two search tools, grep and find. Then what a process really is. Then I P C, inter-process communication, which is how running programs talk to each other. And finally signals, which are how a process gets told that something just happened.
+B: That sounds like two lectures glued together.
+A: It kind of is, but the thread is: files on disk, then programs running, then programs talking. The file commands first, quickly. mkdir creates a directory, rmdir deletes one, but only if it's empty. touch creates an empty file. cp makes a real copy, rm deletes, and the dash r option does either to a whole directory. ln makes a hard link, or a symbolic link with dash s.
+B: And mv copies the file to the new place and deletes the old one, right?
+A: That's the common guess, and exactly what the test likes to ask. Inside one disk, mv copies nothing. Only the name changes place, like moving a label while the box stays put. Data is copied only when you move to a different disk.
+B: Oh, so that's why moving a huge file is instant. Okay, then the slide with all the funny symbols.
+A: Those build regular expressions, patterns that describe text. The caret means start of the line, the dollar sign means end of the line. An atom is one character, or a group in square brackets or round brackets. Then the star means the atom before it, zero or more times. Plus means one or more times. And the question mark means zero or one time.
+B: Wait, the star means "anything", doesn't it? Like ls star dot c.
+A: That's the trap. In the shell's file-name wildcards, star alone means any text, and question mark means any one character. In a regular expression, star only means "repeat the previous thing zero or more times". If you want "any text" in a regular expression, you write dot star, because the dot means any single character.
+B: Same symbols, different rules. Got it. So the pattern a, b star, c would match a c, a b c, a b b c, and so on.
+A: Perfect. Now, grep. It prints every line of some files that matches a pattern; the name means "global regular expression print". Options: dash r searches a directory tree, dash i ignores case, dash n shows line numbers, dash w matches whole words, and dash v shows the lines that do not match.
+B: Give me one from the slides.
+A: ls dash l, the pipe symbol, grep caret d. The long listing puts a d at the start of every line that's a directory, so this keeps only the directories.
+B: Nice. And find?
+A: The key difference: grep searches inside files, find searches for the files themselves, walking down a directory tree. grep reads every page of the book; find walks the shelves reading titles. Options: dash name for the file name, dash i name to ignore case, dash type f or dash type d for only files or only directories, and dash maxdepth to limit the depth.
+B: And the one with the curly braces?
+A: Dash exec. It runs a command on every file found, and the curly braces get replaced by the file's name. The slide example finds every file ending in dot o and runs rm on each one. The backslashes there stop the shell from eating the star and the semicolon before find sees them.
+B: Okay, part two. Processes.
+A: Here's the core definition, and it's a guaranteed exam question. A program is a file on disk. A process is that program running: its code loaded in memory, plus its current state, meaning the values of its variables and of the C P U registers.
+B: So a program is like a recipe in a cookbook, and a process is someone actually cooking it.
+A: Lovely analogy. Two people cooking the same recipe make two separate dishes: start a program twice and you get two processes, each with its own P I D, process ID. The command ps lists them.
+B: The slides also show the memory of a process split into pieces.
+A: Four areas. Text is the program's code. Data holds the global variables, split into initialized and uninitialized. The stack holds the temporary data of function calls: parameters, return addresses, local variables. And the heap is memory the program asks for while it's running, with malloc in C.
+B: And there's a drawing where they grow towards each other.
+A: Yes. Low addresses at the bottom: text, then data. The heap sits above and grows upwards; its end is called the program break. The stack is near the top and grows downwards; its top is the stack pointer. They grow into the free space in the middle from opposite sides.
+B: Like two people filling a bookshelf, one from the left and one from the right, hoping they don't meet.
+A: Exactly that. Now part three, communication. A process is either independent, meaning it neither affects nor is affected by others, or cooperating.
+B: Why would processes want to cooperate? Aren't they happier alone?
+A: Four reasons on the slide, worth memorizing. Information sharing, because several need the same data. Computation speedup, by splitting a job into parts that run at the same time. Modularity, building a system from small separate pieces. And convenience: you edit, compile and listen to music at once.
+B: Sharing, speed, modularity, convenience.
+A: Right. And to cooperate they need a way to exchange data, which is I P C. There are two models. Shared memory, where one piece of memory is visible to both processes: one writes, the other reads. The kernel only sets it up, then they talk directly. It's fast, but they have to be careful not to trample each other's data.
+B: Like a shared whiteboard in a flat.
+A: Good one. The other model is message passing. Process A hands a message to the kernel, the kernel puts it in a queue and delivers it to process B. It's slower, since every message goes through the kernel, but simpler and safer, and it even works between different machines. That's more like the postal service.
+B: So shared memory is fast but risky, message passing is slower but safer.
+A: That's the trade-off they'll ask about. In message passing there are just two operations, send and receive.
+B: How does a message know where to go?
+A: Two ways. Direct communication: you name the other process, send to P, receive from Q. Both sides must know each other. Indirect communication: you name a mailbox, also called a port, which has its own ID. Anyone can drop a message into mailbox A, and whoever receives from A picks it up. The processes only need to know the mailbox, not each other.
+B: Like a P O box. You don't need to know who empties it.
+A: Exactly. Then there's waiting. Blocking, or synchronous, means the caller waits: send waits until the message is received, receive waits until one arrives. Non-blocking, or asynchronous, means send returns at once, and receive returns a message or nothing.
+B: And if both sides block?
+A: Then they meet at the exact moment of the hand-over, and that's called a rendez-vous. Like two people who agreed to swap keys and both wait at the door until the other shows up.
+B: So where does Unix fit in all this?
+A: Unix's message passing tools are pipes. You know the anonymous pipe, the pipe symbol in the shell. It has no name, goes one way only, and connects processes started together. Then there's the named pipe, or FIFO, first in, first out: a special file that behaves like a pipe. Because it has a name, two unrelated programs can use it.
+B: So a named pipe is the mailbox from before.
+A: Spot on. You create it with mkfifo, start a reader in the background, then a writer echoes "hello" into it, and the reader prints it.
+B: Why start the reader first?
+A: Because a FIFO needs both ends. A writer waits until some reader has opened it. Nice exam question.
+B: Okay, last part. Signals.
+A: A signal is a short notification delivered to a process: "this event just happened". It's asynchronous, so it can arrive at any moment, whatever the process is doing. Think of a tap on the shoulder.
+B: Who's doing the tapping?
+A: Three sources. Another process, with the kill command. You, from the keyboard, with control C or control Z. And the kernel: sig child when a child process ends, sig F P E for an arithmetic error like dividing by zero, and sig seg V when a program touches memory it doesn't own, the famous segmentation fault.
+B: So kill kills things.
+A: Funny name, but no. Despite the name, kill sends any signal, not only deadly ones. When a signal arrives, one of three things happens. It's ignored, which is the default for harmless events. The process is terminated, which is the default for most signals. Or it's caught: the program has registered a function called a handler, and that function runs instead.
+B: So a program can just catch every signal and refuse to die?
+A: Almost. Two signals can be neither caught nor ignored: sig kill, which always ends the process, and sig stop, which always pauses it. They're the system's guarantee that any process can be stopped. That one is very likely on the test.
+B: Then why not always use kill dash nine?
+A: Because plain kill sends sig term, the polite "please exit", which lets the program clean up. Kill dash nine, sig kill, gives it no chance. It's asking a guest to leave versus having security carry them out.
+B: And how do I name the signal?
+A: By name, with or without the sig prefix, or by number, so kill dash term or kill dash fifteen. Kill dash l lists every signal.
+B: And the keyboard ones?
+A: Control C sends sig int, interrupt, number two. It normally ends the program, but a program may catch it, so control C isn't guaranteed to kill. Control Z sends sig T stop, terminal stop, number twenty. It pauses the program, and you continue it with fg or bg, the job control from lecture three.
+B: Numbers to remember?
+A: Two is interrupt, nine is kill, fifteen is term, twenty is terminal stop.
+B: Let me try the recap. One: mv inside one disk only moves the name, and a star in a regular expression repeats the previous atom, unlike the shell wildcard. Two: grep searches inside files, find searches for files. Three: a program is a file on disk, a process is that program running with its own P I D, and its memory has text, data, stack and heap, with the heap growing up and the stack growing down.
+A: Keep going, you're doing great.
+B: Four: shared memory is fast but needs care, message passing is slower but safer, and a rendez-vous is when both sides block. Five: a named pipe is a mailbox, and you start the reader first.
+A: And six?
+B: Six: a signal can be ignored, terminate the process, or be caught by a handler, except sig kill and sig stop, which can't be caught or ignored. And use plain kill before kill dash nine.
+A: Perfect recap. Next time, in episode five, we start actually programming in the shell: variables, tests, if, loops and functions. See you then.

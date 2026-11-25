@@ -1,0 +1,67 @@
+# Episode 7: System services
+A: Welcome back to the T T C S podcast. This is episode seven, and today we are covering lecture seven: system services.
+B: Hi, I'm Sam. I'll admit I don't really know what a service is. I just know my laptop does a lot of things I never asked for.
+A: That's actually a decent definition. Today is about the programs Linux starts by itself at boot, and the three generations of tools for managing them: System V init, Upstart and systemd.
+B: Three tools for the same job? That sounds like the history of every phone charger I've owned.
+A: Pretty much. All three answer the same questions: what gets started, in what order, and how do I start or stop one by hand. You'll mostly use systemd today, but the older two still show up on the exam.
+B: Okay. Where do we begin?
+A: With a quick recap. At boot, init starts a program called getty on each terminal. Getty gives you a terminal, login checks your password and starts your shell, and the shell runs your commands as child processes. When a command wants something real done, it asks the operating system.
+B: And how does it ask?
+A: Two ways. Directly from the kernel, through a system call, basically a function call into the kernel, like open or read. Or from another program that provides the service, a server. In Unix, these servers are called daemons. They run in user space, as normal programs outside the kernel, and your command reaches them through I P C, inter-process communication.
+B: Daemons, like little demons living in my computer?
+A: The spelling is old-fashioned, but the idea is a helpful spirit working in the background: networking, the firewall, printing, keeping the clock correct. A handy rule: names ending in d are usually daemons, like s s h d, the secure shell server.
+B: So is a service the same thing as a daemon?
+A: Close, but not quite. A service is a system program started automatically at boot; technically, a process started by init. Some services are daemons you talk to, like a web server. Others just prepare the environment, like mounting disks, and then they're done. Services usually run as long as the system is up, get restarted if they crash, and which ones run depends on the runlevel.
+B: What's a runlevel?
+A: A numbered mode the system can be in. Zero is power off, one is single user mode for repairs, three is multi-user with network but text only, five adds the graphical interface, and six is reboot. And every service supports the same four operations: start, stop, reload its configuration, and show its status.
+B: Start, stop, reload, status. And runlevel six is the "have you tried turning it off and on again" level.
+A: Exactly. Now, the first manager, System V init. The V is the Roman numeral five, so you say "System five". It's built entirely from plain files and naming rules. The file slash etc slash inittab tells init the default runlevel. The directory slash etc slash init dot d holds one script per service, and each script knows how to start and stop its service. Then for every runlevel there's a directory, slash etc slash r c zero dot d up to r c six dot d. R C stands for run commands.
+B: And those directories contain copies of the scripts?
+A: No, only symbolic links pointing back to the scripts in init dot d. And here's the clever part: the name of the link is the configuration. A link called S zero five ssh means start this service when entering the runlevel. A link called K zero one ssh means kill, or stop, it. The two digits set the order, because the links are processed alphabetically, so S zero one runs before S zero two.
+B: So enabling a service in a runlevel just means creating or renaming a link. Surprisingly low-tech.
+A: Exactly. The slides show a real example. The command runlevel prints "N 3".
+B: N meaning "no", like the system isn't running yet?
+A: Good guess, but no. N means none: there was no previous runlevel because the system has just booted, and the current one is three. That's a classic exam question.
+B: Noted. And what was in that runlevel three directory?
+A: Running ls dash l on it, every line starts with the letter l, meaning symbolic link. You see K zero one ssh, so ssh is stopped in runlevel three, then S zero one rsyslog, S zero two cron, and so on. Logging starts first, so that later services can write log messages.
+B: You want the diary open before anything happens.
+A: Nice way to put it. Each init dot d script also begins with a block of special comments. To the shell they're just comments, but the tools that create the links read them, to learn which runlevels start the service and which stop it. That format comes from the L S B, the Linux Standard Base.
+B: And who creates the links?
+A: Commands that differ by distribution: chkconfig on Red Hat, update dash r c dot d on Debian and Ubuntu. Those decide what happens at boot. To act on a service right now, you use the service command: service ssh start, stop, reload, which re-reads the configuration and keeps running, or restart.
+B: So update dash r c dot d is "at boot", and service is "right now".
+A: Exactly, and that split comes back with systemd, so hold on to it.
+B: Okay, generation two. Upstart.
+A: Upstart, used mainly by Ubuntu from about two thousand six to two thousand fourteen, replaced the fixed "run the scripts in order" model with events. An event is a message like "the system reached runlevel two" or "this service has started". A job is a service plus the rules saying which events start it and which stop it. Job files live in slash etc slash init, and Upstart notices when you edit them, using inotify, a kernel feature that reports file changes.
+B: What does a job file look like?
+A: The example on the slides is for the first terminal. It says start on runlevel two three four five, stop on any other runlevel, then the word respawn, and finally the command to run, which is getty.
+B: Respawn, like in a video game?
+A: Exactly like a video game. If the process dies, start it again.
+B: So how does the boot actually happen with events?
+A: When init starts, it emits the event called startup. Jobs waiting for that event start. As each job changes state, init emits more events: starting, started, stopping, stopped. Those start other jobs, like a row of dominoes, until everything needed is running. Upstart can also run per user, managing your own login session, which System V couldn't do.
+B: And how do I talk to it?
+A: With initctl, init control. Initctl list shows all jobs, and there's initctl status, start, stop, and emit to send an event by hand. A job's state shows as a pair, goal slash state, like start slash running: what it should be doing, and what it's actually doing.
+B: Like my goal is studying and my state is listening to podcasts.
+A: This podcast counts as studying, so you're fine. Now, generation three: systemd, the init of current Linux. The key word is unit: anything systemd manages, each described in its own configuration file. There are twelve kinds.
+B: Twelve! Please don't make me learn twelve.
+A: Just five. A service unit is a daemon to start and supervise. A target unit is a named group of units, used as a milestone during boot. A mount unit is a file system to mount. A device unit is a piece of hardware. And a timer unit starts another unit at given times, a replacement for cron.
+B: And target replaces runlevel?
+A: Yes. Multi-user dot target matches runlevel three, graphical dot target matches five, rescue dot target matches one, and there are poweroff and reboot targets for zero and six.
+B: So default dot target is runlevel... two?
+A: Careful, default dot target isn't a real target at all. It's a symbolic link pointing to one of the others, and it decides what the machine boots into.
+B: Ah, like a shortcut on my desktop rather than the actual app.
+A: Perfect analogy. Now, the big change from System V: there's no fixed order. Each unit declares what it depends on, and systemd starts things as soon as their dependencies are ready, many of them in parallel. That's why modern systems boot so fast. It also still understands old init dot d scripts, so old software keeps working. At boot, it loads unit files from slash etc slash systemd slash system and from the package directories, finds default dot target, works out everything it depends on, and starts it.
+B: What does a unit file look like inside?
+A: A small text file with sections in square brackets, each with key equals value lines. The Unit section has a description and ordering, what must start before or after. The Service section has the actual commands for starting, stopping and reloading. The Install section says which target pulls the unit in at boot when you enable it.
+B: Can you give me the S S H example in words?
+A: In the Unit section, "After equals network dot target" means start only after the network is up. In the Service section, ExecStart gives the command that actually is the service, and Restart equals on-failure means restart it if it crashes. In the Install section, WantedBy equals multi-user dot target means once enabled, it starts as part of the multi-user target.
+B: And the command to control all this?
+A: Just one: systemctl, system control. Systemctl start ssh dot service, systemctl stop, systemctl restart, and systemctl status to see whether it's running plus its last log lines.
+B: And enable and disable start and stop things too.
+A: That's the most common mistake, so I'm glad you said it. Start and stop act now, and are forgotten at the next reboot. Enable and disable decide what happens at boot, and don't touch the running service. If you want it running now and after every reboot, run both start and enable.
+B: Same split as service versus update dash r c dot d. Let me try a recap.
+A: Go for it.
+B: One: a service is a process started by init at boot, supporting start, stop, reload and status. Two: System V uses scripts in init dot d and links in the r c directories, where S means start, K means kill, and the digits set the order. Three: Upstart is event-based, a chain reaction, and respawn restarts a job that dies.
+A: Four: systemd manages units, and targets replace runlevels, with multi-user as three and graphical as five; default dot target is just a link. It boots fast by starting units in parallel based on dependencies.
+B: And five: start and stop act now, enable and disable act at boot.
+A: Perfect. Next episode: how a program becomes a daemon, where its log messages go, and how cron runs commands on a schedule.
+B: See you then.

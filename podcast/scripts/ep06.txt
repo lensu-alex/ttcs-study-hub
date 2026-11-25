@@ -1,0 +1,64 @@
+# Episode 6: Filters and text processing
+A: Welcome back to the TTCS podcast. This is episode six, and I'm Alex.
+B: I'm Sam. Last time we wrote our first shell scripts. What's today about?
+A: Lecture six, filters and text processing. The small tools that cut, glue and rewrite text: cut, paste, split, join, tr, sed and awk, plus a calculator called bc. Each does one simple job, and their power comes from chaining them with pipes.
+B: Like kitchen gadgets. A peeler, a grater, a slicer. Useless alone, a salad together.
+A: Exactly. Vocabulary first. A filter is a program in the middle of a pipeline: it reads text, transforms it, and passes it on. A line is text up to a newline. A field is one column of data inside a line. And the separator, or delimiter, is the character between fields, like a space, a tab or a colon.
+B: Okay. First tool, cut.
+A: cut keeps only some columns of every line. Dash f picks fields, and dash d gives the delimiter; without it, the delimiter is a tab. Dash c picks character positions instead. You list the columns, like one comma three, or a range, two dash five.
+B: The slide example uses slash etc slash passwd.
+A: Every line of that file describes one user, in seven fields separated by colons. Field one is the user name and field seven is the user's shell. So cut dash d colon dash f one comma seven means "the delimiter is a colon, keep fields one and seven". You get things like paul, colon, slash bin slash k s h.
+B: And the one with who?
+A: who lists logged-in users in neat, fixed-width columns. There's no reliable separator there, so you pick columns by character position, with dash c: characters one to eight for the name, eighteen to thirty for the date.
+B: So dash f when there's a separator, dash c when things are lined up by position.
+A: Exactly, and that's a likely exam question. Next, paste. If cut takes columns apart, paste glues them together. It puts files side by side: line one of each file becomes one output line, then line two of each, and so on, separated by a tab. Dash d lets you choose other separators. Dash s, for serial, glues all the lines of one file into a single line, then does the same for the next file.
+B: So a file of first names and a file of last names gives "Paul Irofti", "Alex Alexandrescu" and so on.
+A: Right. With dash s, all the first names go on one line and all the last names on the next. Also, a single dash as a file name means "read standard input", so ls piped into paste with three dashes puts the file list into three columns.
+B: Cute. What about split?
+A: split cuts one big file into smaller ones. By default the pieces have a thousand lines each and are named x a a, x a b, and so on. Dash l sets the lines per piece, dash b the bytes. Split a three hundred sixty-two line file into pieces of one hundred lines, and you get three full pieces and one with sixty-two.
+B: And to glue them back, cat them all together into one file.
+A: Exactly. Now join, which is the most database-like of the tools. It merges two files by a common key, like matching rows of two tables. If both files have a line with the same first field, the output is one line: the key, then the rest of both lines.
+B: Show me.
+A: age dot t x t has Paul thirty-three, Alex forty, Ann twenty-five. income dot t x t has Paul three thousand and Ann four thousand five hundred. join gives Paul thirty-three three thousand, and Ann twenty-five four thousand five hundred.
+B: And Alex vanished.
+A: Because he has no line in the second file. With dash a one, join also prints the unpaired lines of file one, so Alex forty appears without an income. Dash one and dash two say which field is the key in each file. And the rule they love to ask: both files must be sorted by the key, or lines will be missed.
+B: Now the calculator. Why do we need one? We had double brackets arithmetic last time.
+A: Because the shell's arithmetic only knows whole numbers. For anything with decimals, you call bc, the basic calculator, which works nicely in pipelines. Echo one divided by three, piped into bc, gives zero, because without options it does integer division. Add dash l, which loads the math library and works with twenty decimals, and you get point three three three and so on.
+B: And scale?
+A: Scale equals n says how many decimals to keep. In a script you echo "scale equals two, then a divided by b" into bc and capture the result. With dash l you also get single-letter math functions: s for sine, c for cosine, a for arctangent, e for the exponential, l for the natural logarithm, plus sqrt.
+B: I've heard four times a of one is pi.
+A: It is, because the arctangent of one is pi over four, in radians. The slide also mentions posix, the standard describing what every Unix must provide. "Not specified by posix" means it might be missing on some systems.
+B: Okay. tr.
+A: tr, short for translate, works on single characters. It replaces each character of the first set with the character in the same position of the second set. So translating a b c into x y z turns a into x, b into y, c into z. Dash d deletes the characters instead. Dash s squeezes a run of the same character into one. And dash c, complement, applies the operation to every character not in the set.
+B: Can you combine them?
+A: The classic is tr dash c s, letters, newline. Every character that's not a letter becomes a newline, and repeated newlines are squeezed into one, giving one word per line. One gotcha: tr only reads standard input, never a file name.
+B: Then sed, the one everybody fears.
+A: sed is the stream editor. It edits text automatically, with no window and no cursor. You describe the change, and it applies it to every line passing through. It reads the input one line at a time, checks each line against a pattern, a regular expression, and if it matches, applies a command, most often substitute or delete. It prints the result and leaves the original file untouched.
+B: So tr and sed do the same thing?
+A: Not quite, and this comparison is a likely question. tr works on single characters. sed works on whole pieces of text matched by regular expressions. Now the substitute command: s, then a separator, the pattern, the replacement, and some flags. Most people use slashes as separators; the slides use commas. So s, Alex, Paul replaces Alex with Paul.
+B: Every Alex in the file.
+A: That's the classic sed surprise. Without the g flag, only the first match on each line is replaced. G stands for global, and it replaces every match on the line. A number like two replaces only the second match, and w followed by a file name also writes the changed lines to that file.
+B: And deleting?
+A: sed, slash Paul slash d, deletes every line containing Paul, the whole line. Compare that with substituting Paul with nothing, globally, which removes just the word and keeps the rest of the line. You can also put an address in front of a command to limit it to certain lines: a line number, a range like one comma three, or a pattern like slash Paul slash. So applying the substitution only to lines one to three means the Paul on line five survives.
+B: There was a scary slide swapping first name and surname.
+A: It looks scary but it's logical. The pattern says: start of the line, one capital letter, then any number of letters, so one capitalised word, then a space, then another word. Each word is wrapped in escaped round brackets, which remember what matched inside them. In the replacement, backslash one means "what group one matched", and backslash two means group two. Writing backslash two, space, backslash one prints them in reverse, so "Paul McCartney" becomes "McCartney Paul".
+B: Like cutting two words out of a newspaper and gluing them back in the other order.
+A: Exactly. Someone even wrote an Arkanoid game in sed, which shows it's a complete programming language. Which brings us to awk.
+B: Odd name.
+A: It's the initials of its authors: Aho, Weinberger and Kernighan. awk is a small programming language for text arranged in columns. A program is a list of rules, each a pattern followed by an action in curly braces. awk reads the input line by line, and for each line it tries every rule: if the pattern matches, the action runs. A rule with no pattern applies to every line.
+B: And it's Turing complete, which means it's very fast?
+A: No, Turing complete means it can compute anything a normal programming language can. Nothing to do with speed. Two special patterns: BEGIN runs once before the first line, and END runs once after the last line. The slide counts how many lines mention Dan and how many mention Ann: BEGIN prints a title, each matching line adds one to a counter, and END prints the totals. Variables need no declaration and start at zero.
+B: And fields?
+A: awk splits every line into fields automatically. Dollar sign one is the first field, dollar sign two the second, and dollar sign zero is the whole line. F S, the field separator, says what separates them, by default spaces and tabs. In the bank account example, lines with IN add the second field to the amount, lines with OUT subtract it, and END prints the total, which comes out to three U S D.
+B: Hold on, dollar sign one again? That's the script's first argument.
+A: Big exam trap. In awk, dollar sign one is the first field of the current line. It has nothing to do with the shell's dollar sign one. awk also keeps some variables for you: N F, the number of fields on the current line, so dollar sign N F is the last field. N R, the number of records, meaning the lines read so far. And FILENAME. Printing N R in the END block gives the number of lines, just like w c dash l.
+B: And the slash etc slash passwd example again?
+A: Set F S to a colon in BEGIN, then for every line print "User", field one, "uses", field seven. Pieces written next to each other in print are glued together. awk can even run another command and read its answer with getline.
+B: Let me recap. One: a filter reads text, transforms it, and passes it on, and they're meant to be chained with pipes.
+A: Yes.
+B: Two: cut dash f for fields with a separator, cut dash c for fixed positions, paste glues files side by side, and join needs both files sorted by the key.
+A: Good.
+B: Three: the shell's arithmetic is whole numbers only, so use bc dash l or scale for decimals. Four: tr works on single characters and reads only standard input, while sed works on whole patterns and needs the g flag to replace every match on a line.
+A: And awk?
+B: Five: awk runs pattern and action rules on every line, with BEGIN and END running once. Six: in awk, dollar sign one is a field, not the script's argument, and N F, N R and F S are the field count, line count and field separator.
+A: Perfect. Next time, in episode seven, we move to system services: how the operating system starts and manages the programs running in the background. See you then.

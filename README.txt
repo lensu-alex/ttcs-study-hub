@@ -16,6 +16,9 @@ Folders
             theory.js (theory flashcards: question, short answer, lecture, slide)
   assets/   app.js, app.css
   tools/    build.py, regenerates slides/, thumbs/ and data/slides.js
+            podcast.py, turns podcast/scripts/epNN.txt into podcast/audio/epNN.mp3 and data/podcast.js
+  podcast/  scripts/ (the episode text, one "A: …" / "B: …" line per turn; A = Alex, B = Sam)
+            audio/ (the mp3 files the Podcast page plays)
 
 Adding a new lecture
   1. Put the PDF in pdfs/ (e.g. course12.pdf).
@@ -27,5 +30,13 @@ Adding a new lecture
   5. Explanations: add a "c12" block to a data/notes-*.js file, one entry per slide number
      (format at the top of notes-1.js). New acronyms go in data/glossary.js; they then show up
      next to every slide that uses them, in the Glossary page and in search.
+
+Podcast episodes
+  Voices are Kokoro (free, runs locally on the Mac, Apple Silicon only). One-time setup:
+           python3 -m venv .venv-tts && .venv-tts/bin/pip install mlx-audio soundfile "misaki[en]"
+           brew install ffmpeg
+  For a new lecture: write podcast/scripts/ep12.txt in the same format (spell acronyms as "C P U",
+  commands as people say them, no symbols), then run  .venv-tts/bin/python tools/podcast.py
+  It renders every script that has no mp3 yet (about 2 minutes per episode) and rewrites data/podcast.js.
 
 In the slide viewer: E shows or hides the explanation, T the thumbnails, F is full screen.

@@ -13,6 +13,7 @@ Object.keys(QUIZ).forEach(id => QUIZ[id].forEach((q, i) => { q.id = id + ':' + i
 const ALLQ = LECTURES.flatMap(d => QUIZ[d.id] || []);
 const KIND = { c: 'command', s: 'syntax', f: 'file', n: 'fact', t: 'theory' };
 const NOTES = window.TTCS_NOTES || {};
+const PODCAST = window.TTCS_PODCAST || [];
 const MIX_SIZE = 20;
 
 /* ---------- helpers ---------- */
@@ -126,6 +127,7 @@ function route() {
   if (name === 'cards') return cards();
   if (name === 'cheats') return cheats();
   if (name === 'glossary') return glossary();
+  if (name === 'podcast') return podcast();
   if (name === 'search') { let q = ''; try { q = decodeURIComponent(parts.slice(1).join('/')); } catch (e) { /* malformed escape */ } return search(q); }
   home();
 }
@@ -595,6 +597,41 @@ function glossary() {
   };
   $('#gf').oninput = draw; $('#gk').onchange = draw;
   draw();
+}
+
+/* ---------- podcast ---------- */
+const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+const SPEAKER = { A: 'Alex', B: 'Sam' };
+
+function podcast() {
+  setNav('pod');
+  const total = Math.round(PODCAST.reduce((s, e) => s + e.secs, 0) / 60);
+  const pos = store.get('podPos', {}), speed = store.get('podSpeed', 1);
+  app.innerHTML = `
+  <section class="page narrow">
+    <header class="page-head"><h1>Podcast</h1><p>Every lecture as a short conversation: Alex explains, Sam asks the questions a confused student would. ${PODCAST.length} episodes, about ${total} minutes in all. Good for the bus or a walk; the voices are computer-generated.</p></header>
+    <div class="filters"><label class="pod-speed">Speed <select id="ps" aria-label="Playback speed">${[0.8, 1, 1.15, 1.25, 1.5, 1.75, 2].map(v => `<option value="${v}"${v === speed ? ' selected' : ''}>${v}×</option>`).join('')}</select></label></div>
+    ${PODCAST.length ? `<ol class="pod">${PODCAST.map(e => `
+      <li class="pod-ep" data-ep="${e.id}">
+        <div class="pod-head"><span class="lec-n">${String(e.n).padStart(2, '0')}</span><div><h3>${esc(e.title)}</h3>
+          <p class="pod-meta">${mmss(e.secs)}${pos[e.id] ? ` · stopped at ${mmss(pos[e.id])}` : ''}${byId[e.doc] ? ` · <a href="#/doc/${e.doc}/1">Lecture ${e.n} slides</a>` : ''}</p></div></div>
+        <audio controls preload="none" src="${e.src}"></audio>
+        <details><summary>Transcript</summary><div class="pod-tx">${e.turns.map(t => `<p><b>${SPEAKER[t[0]]}</b> ${esc(t[1])}</p>`).join('')}</div></details>
+      </li>`).join('')}</ol>` : '<div class="empty"><p>No episodes yet.</p></div>'}
+  </section>`;
+  const audios = $$('.pod audio');
+  const save = a => { const id = a.closest('.pod-ep').dataset.ep, p = store.get('podPos', {}); if (a.ended || a.currentTime < 5) delete p[id]; else p[id] = Math.floor(a.currentTime); store.set('podPos', p); };
+  audios.forEach(a => {
+    const id = a.closest('.pod-ep').dataset.ep;
+    a.addEventListener('loadedmetadata', () => { a.playbackRate = +$('#ps').value; if (pos[id] && !a.currentTime) a.currentTime = pos[id]; });
+    a.addEventListener('play', () => { a.playbackRate = +$('#ps').value; audios.forEach(o => o !== a && o.pause()); });
+    a.addEventListener('pause', () => save(a));
+    a.addEventListener('ended', () => { save(a); const next = audios[audios.indexOf(a) + 1]; if (next) { next.play(); next.scrollIntoView({ block: 'center', behavior: 'smooth' }); } });
+    let last = 0;
+    a.addEventListener('timeupdate', () => { if (Math.abs(a.currentTime - last) > 10) { last = a.currentTime; save(a); } });
+  });
+  $('#ps').onchange = () => { const v = +$('#ps').value; store.set('podSpeed', v); audios.forEach(a => a.playbackRate = v); };
+  teardown = () => audios.forEach(a => { if (!a.paused) save(a); a.pause(); });
 }
 
 /* ---------- search ---------- */

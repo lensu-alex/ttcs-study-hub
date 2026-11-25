@@ -1,0 +1,72 @@
+# Episode 11: Networking
+A: Welcome back to the T T C S podcast. This is episode eleven, and today we cover lecture eleven: networking.
+B: Hi! The lecture with the most acronyms, right?
+A: It is, so we'll spell them out as we go. The lecture is about how programs on different machines talk: addresses, protocols, sockets, and the web and e-mail on top.
+B: Where do we start?
+A: With something you already know. Remember pipes, like l s dash l, the pipe symbol, more? A pipe connects two processes on the same machine, and the kernel takes care of everything: order, waiting, delivery.
+B: Right, the kernel is the responsible adult.
+A: Now put the two processes on different machines, connected by a T C P slash I P socket. The data crosses cables and machines in between, so it can be delayed, lost or reordered, and both sides need agreed rules for coping. Those rules are protocols.
+B: And since the machines can't share memory, it's message passing, not shared memory.
+A: Exactly, two machines have no memory in common.
+B: OK. And a protocol is just a program that talks over the network?
+A: Not quite. A protocol is an agreed set of rules for a conversation: who speaks first, what a message looks like, what to answer. It's a specification, a description on paper. The programs that follow it are implementations, and there can be many.
+B: So the protocol is the recipe, and each program is somebody's cake.
+A: Exactly. Internet protocols are published as numbered documents called R F C, Request for Comments. R F C seven nine one, for example, defines I P. They're written by the I E T F, the Internet Engineering Task Force.
+B: And then come the layers?
+A: Yes. Networking is too complicated for one protocol, so it's split into layers. Each solves one problem and relies on the layer below. The O S I model, Open Systems Interconnection, has seven, from bottom to top: physical, data link, network, transport, session, presentation, application.
+B: I'll forget that in four seconds.
+A: There's a mnemonic: Please Do Not Throw Sausage Pizza Away. Physical, data link, network, transport, session, presentation, application.
+B: Now I'm hungry.
+A: The model the Internet really uses has four layers, sometimes called the D O D model, after the US Department of Defense that funded it. Link, which merges O S I layers one and two. Network, which is I P. Transport, which is T C P and U D P. And application, which merges layers five, six and seven.
+B: And when I send something, it goes down the layers?
+A: Yes, that's a protocol stack: down the layers to the wire when sending, back up when receiving. A socket is the programmer's handle on all this: your program reads and writes a socket, and everything underneath does the rest.
+B: Will they ask which protocol sits on which layer?
+A: Quite likely. Ethernet and Wi-Fi are data link. I P is network, getting a packet from one machine to another. T C P and U D P are transport, getting data from one program to another. And application has D N S, S M T P for mail, H T T P for the web and S S H for remote login.
+B: Network layer, machine to machine. Transport layer, program to program.
+A: That distinction is gold. Now I P, the Internet Protocol. It gives every host an address and delivers packets from one address to another. An I P version four address is thirty-two bits, written as four numbers from zero to two hundred fifty-five separated by dots, like one nine two dot one six eight dot one dot one.
+B: That's about four billion addresses. Plenty, surely?
+A: Not for every phone, laptop and smart fridge on Earth. So I P version six uses one hundred twenty-eight bits, though version four is still the most common. And some ranges are private: addresses starting with ten, with one seven two dot sixteen up to thirty-one, and with one nine two dot one six eight.
+B: So private addresses are for shy computers?
+A: Ha, kind of. They work only inside a local network, your home router hands them out, and they can't be reached from the Internet: they're non-routable. Everything else is public, like eight dot eight dot eight dot eight, Google's public D N S server.
+B: OK. And T C P? I always hear T C P slash I P together.
+A: They're a team. T C P, the Transmission Control Protocol, makes the network look reliable. It cuts messages into packets and reassembles them in order, resends lost ones, and slows down when the network is congested. I P just routes each packet.
+B: So I P gets packets to the right machine, and T C P makes the promises.
+A: That's the line to remember. Next, D N S, the Domain Name System. People remember names, machines use numbers. D N S translates one into the other, for example f m i dot unibuc dot r o into one nine three dot two two six dot five one dot six.
+B: So it's the phone's contact list for the Internet.
+A: Good analogy. If a server's address changes, its name stays the same. In the beginning each machine kept its own list in slash etc slash hosts, which is still checked first. Today name servers answer, with root name servers at the top. In the terminal, n s lookup and dig ask D N S for you.
+B: Now, how do two programs actually start talking?
+A: Through the client server model. A server waits for requests and answers many clients at a time. A client sends a request and gets a response, and the client always speaks first. Your browser is a client.
+B: But one machine runs lots of programs. How does a message know which one it's for?
+A: That's the port, a number up to about sixty-five thousand. If the I P address is the building, the port is the flat number. Address plus port is called an endpoint. Servers listen on well-known ports so clients know where to knock: eighty for the web, twenty-two for S S H, twenty-five for mail. The full list is in slash etc slash services.
+B: And my side, the client?
+A: The operating system picks a free port for you. A socket is the object a program uses for one endpoint, and a connection is a pair of endpoints plus the protocol. For example: by T C P, from port four four four four on my machine, to port eighty on the web server.
+B: Then what's the difference between a T C P socket and a U D P socket?
+A: A T C P socket is like a phone call. First a connection is set up. Then everything sent arrives complete and in order, and what's lost is resent automatically. It behaves like a pipe, a continuous stream of bytes with no message boundaries.
+B: So if I send "hello" and then "world", the other side gets them separately?
+A: Not necessarily, and this is a subtle exam point. It might read "helloworld" in one go, or "hel" and then "loworld". The bytes are all there, in order, but the program itself must decide where one message ends, for example by ending each one with a newline.
+B: Sneaky. And U D P?
+A: U D P, the User Datagram Protocol, is like dropping postcards in a letter box. No connection; each message, called a datagram, travels on its own. No guarantees: it can be lost, duplicated or reordered. But boundaries are kept: one send equals one whole receive.
+B: Why would anyone choose the unreliable one?
+A: It's simple and fast, with no setup and no waiting for resends. That's good for D N S queries, video calls and games, where a late packet is useless anyway. So: T C P is reliable, ordered, a byte stream. U D P is unreliable, unordered, but whole messages.
+B: Phone call versus postcards.
+A: One more server-side idea: small services don't each get their own daemon. A super-server, inetd, listens on all their ports and starts the right program when someone connects, like a receptionist. Now the web, born at CERN in Geneva. Every resource has a U R L, a Uniform Resource Locator: protocol, colon, slash slash, host, optional port, then path. The protocol is H T T P, HyperText Transfer Protocol, on port eighty, and its encrypted version H T T P S uses port four four three.
+B: And if I leave the port out of the address?
+A: The protocol's default is used, port eighty for H T T P. And H T T P is plain text, so you can speak it by hand: telnet to the server on port eighty, type GET, slash, H T T P one point one, then a Host line naming the site, then an empty line, which ends the request.
+B: And it answers?
+A: With a status line, like two hundred O K, some headers, and the page's H T M L. That is what a browser does.
+B: Last topic, e-mail?
+A: Two protocols for reading mail. P O P, the Post Office Protocol, downloads messages and deletes them from the server. I MAP, the Internet Message Access Protocol, keeps them on the server, so every device sees the same mailbox.
+B: So P O P is taking your letters home, and I MAP is reading them at the post office. Everyone uses P O P, right?
+A: The other way round: today everyone uses I MAP, because we read mail on several devices. On disk, a mailbox is either mbox, all messages in one big file, or maildir, one file per message.
+B: And sending mail?
+A: That's S M T P, the Simple Mail Transfer Protocol, on port twenty-five. It dates from nineteen eighty-two, when everyone on the network trusted everyone. It doesn't check who the sender is and needed no password. Hence spam, and spoofing, mail pretending to come from someone else.
+B: So what fixed it?
+A: Several patches, like passwords and encryption. S P F lets a domain publish which servers may send its mail. D K I M has the sending server sign every message. D MARC says what to do with mail that fails those checks.
+B: Let me try the recap. One: a protocol is a set of rules on paper, published as R F Cs, and networking is split into layers, seven in O S I, four in the Internet model.
+A: Two: I P gives every host an address and routes packets, with no promises. I P version four is thirty-two bits, and ten, one seven two dot sixteen, and one nine two dot one six eight are private ranges.
+B: Three: T C P adds the promises. It's a phone call, a reliable ordered byte stream with no message boundaries. U D P is postcards: fast, no guarantees, but whole messages.
+A: Four: a port picks the program on the machine, address plus port is an endpoint, and servers sit on well-known ports, like eighty for H T T P, four four three for H T T P S, twenty-two for S S H and twenty-five for S M T P.
+B: Five: D N S turns names into addresses, and for mail, P O P downloads, I MAP keeps it on the server, and S M T P sends.
+A: Perfect. And that's our last episode for now: we've gone from the shell all the way to the Internet. Thank you for listening, and good luck on the verification.
+B: It's been fun learning alongside you. If more lectures come, we'll be back.
+A: Until then, happy hacking.

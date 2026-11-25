@@ -1,0 +1,68 @@
+# Episode 2: Boot, login, the shell and files
+A: Welcome back to the T T C S podcast. I'm Alex.
+B: I'm Sam. Last time we built the computer in layers. Today, apparently, we turn it on.
+A: We do. Lecture two in one sentence: what happens between pressing the power button and typing your first command, and how Unix organises users and files. It has four parts: booting, logging in, the shell, and files and directories.
+B: Okay, I press the power button. What happens?
+A: Here's the problem. When you press the button, memory is empty, and the operating system is just a file sitting on a disk. Something has to go and fetch it. That something is the bootstrap loader.
+B: Bootstrap, as in pulling yourself up by your own boots?
+A: That's where the word boot comes from. The processor always starts executing at one fixed address. There, a chip that keeps its contents without power, a ROM or an E E PROM, holds a small program: the BIOS, or on modern machines U E F I, the unified extensible firmware interface.
+B: So the BIOS is the first thing that runs, always.
+A: Right. That program finds the boot loader on the disk and starts it. The usual Linux boot loader is GRUB, which is the menu where you choose which kernel or which operating system to start. GRUB loads the kernel into memory and jumps to it, and from then on the system is running.
+B: So it's a relay race. BIOS hands to GRUB, GRUB hands to the kernel.
+A: Exactly. The full chain to remember for the exam is: BIOS or U E F I, then the boot loader, then the kernel, then init, then services and logins.
+B: How does the BIOS find the boot loader?
+A: It reads the very first sector of the boot disk. A sector is the smallest piece of a disk, traditionally five hundred twelve bytes. That first sector is called the M B R, master boot record, and it holds two things: the partition table, which says how the disk is cut into partitions, and a tiny piece of bootstrap code, which is the first stage of the boot loader. There's also a modern replacement for the M B R partition table, called G P T, goo-id partition table, needed for disks bigger than two terabytes.
+B: Okay, the loader is running. Now it just opens the kernel file, right?
+A: Here's the nice catch. A file is an idea created by the operating system. And the operating system isn't running yet. At this point there are only numbered disk sectors.
+B: Oh. So the loader can't say "open slash boot slash v m linuz", because files don't exist yet.
+A: Exactly. Two ways out. First, a map of sectors: the loader keeps a list of the exact sectors where the kernel lies. Simple, but the list has to be rebuilt every time the kernel file moves or changes. That's how an old loader called LILO worked. Second, mini file system drivers. The loader itself knows how to read the file system, so it finds the kernel by its path, like any file. That's how GRUB works. LILO memorises a shelf position; GRUB can read the library catalogue.
+B: Got it. LILO, map of sectors. GRUB, reads the file system.
+A: Now the kernel, from the file slash boot slash v m linuz, takes control of the hardware and initialises it: processes, memory, files, clocks, protection. And then it waits. A kernel does nothing by itself, it only reacts to events called interrupts. That's what the slides mean by an interrupt-driven program. Like a firefighter: lots of work, but only when the alarm rings.
+B: But something has to start the rest of the system.
+A: Yes, the kernel's last step is to start the first process, slash s bin slash init, which gets process I D one. Every other process on the system descends from it.
+B: And init does what?
+A: It chooses the runlevel, a number from zero to six that names the state of the whole machine. Classic Unix reads the default from slash etc slash init tab, then runs that runlevel's start-up scripts. And the numbers are worth memorising. Zero is power off. One is single user mode, for repairs. Two is multi-user without network. Three is multi-user with network, text only. Four is unused. Five is three plus the graphical interface. Six is reboot.
+B: Zero off, one repair, three text, five graphical, six reboot. And single user mode is the rescue one?
+A: Right. Only root, no network. The command runlevel tells you where you are, telinit three switches to runlevel three, and telinit six reboots.
+B: Wait, is this still how Linux works? My friend said something about systemd.
+A: Good catch. On modern Linux, init is a program called systemd, runlevels are called targets, and you manage them with system C T L. Lecture seven covers that.
+B: Okay. So how do I actually get to log in?
+A: Init starts them. In runlevel three, it starts getty on a few text terminals; getty is the program that prints login colon. In runlevel five, it also starts a display manager, like G D M, the graphical login screen. So telinit three turns the graphical login off.
+B: Walk me through a login, then.
+A: Step by step. Getty prints "login" and reads your user name. Then getty runs slash bin slash login, which asks for your password. Login looks your name up in slash etc slash passwd, which has one line per user, and checks your password against the encrypted one stored in slash etc slash shadow.
+B: So the passwords are in the passwd file?
+A: That's the classic trap. Despite the name, the passwords are not in slash etc slash passwd. The encrypted passwords live in slash etc slash shadow. The passwd file has your user info: your name, your numbers, your home directory, your shell.
+B: Sneaky naming. Okay, then?
+A: If the password matches, login starts your shell, the one written on your line of slash etc slash passwd, and sets the variables USER, SHELL and HOME from that same line. The shell prints a prompt, usually a dollar sign, and waits. And when you exit the shell, init notices and starts a fresh getty on that terminal, so the next person can log in.
+B: So the shell is what I actually talk to. What is it, exactly?
+A: It's the program that reads the commands you type and runs them. The slides call it a command line interpreter. It works interactively, or in batch mode, reading commands from a file called a shell script.
+B: And there are internal and external commands, I remember that word from the glossary.
+A: Right. Internal or built-in commands are done by the shell itself, like C D. External commands are separate programs on the disk, like ls. There are several shells: S H, the original Bourne shell, bash, the Bourne again shell and Linux standard, plus c S H and k S H. A normal user's prompt ends with a dollar sign, root's with a hash sign. And on Unix the shell is the base; the graphical desktop is optional.
+B: Let's do users. How does the system know it's me?
+A: Inside the system you're not a name, you're a number: the U I D, user I D. It's on your line of slash etc slash passwd, which only root can edit. Every time one of your programs tries something, opening a file or killing a process, the kernel checks the U I D to decide if it's allowed.
+B: And root is special because?
+A: U I D zero is root, the superuser. For root's processes the kernel skips most checks. That's exactly why you shouldn't run ordinary programs as root: one mistake can destroy the system.
+B: And groups?
+A: Besides the U I D you get a G I D, a group I D. Groups let several users share files. Every file stores the U I D and G I D of its owner, which ls dash l shows, and a user can belong to several groups at once. The command I D prints your U I D, G I D and groups.
+B: Okay, now files. What exactly is a file in Unix?
+A: A file is the operating system's abstraction for data that must survive a power-off. You see a name and a sequence of bytes. Unix doesn't care what the bytes mean. A name can contain any character except a slash. And a file has attributes: type, size, owner, permissions, time of last change.
+B: And directories are folders that hold files and other folders.
+A: Right, which gives a tree. And all directories form one single tree. Its top is the root directory, written as a single slash.
+B: Root again? Same root as the superuser?
+A: Different root, same word. The root directory is the top of the tree; the root user is the superuser. Every directory also has two automatic entries: dot, meaning this directory, and dot dot, meaning the parent.
+B: And paths?
+A: A path says how to reach a file. An absolute path starts with a slash and goes from the root, like slash home slash ana slash notes dot t x t. A relative path starts from where you are now, like dot dot slash bob slash x.
+B: Okay. Then the file system?
+A: Two meanings. The part of the operating system that manages files, and also the format the data is laid out in on a disk: ext four on Linux, N T F S on Windows, V fat on U S B sticks. Linux can combine disks with different formats into one tree, thanks to a kernel layer called the V F S, virtual file system.
+B: And how does a disk get into the tree?
+A: You mount it. Mounting attaches a disk's file system to an existing directory called the mountpoint, and then the disk's contents appear inside that directory. For example, mount dash t ext four, then a disk partition, then slash, mounts that ext four partition as the root directory. The file slash etc slash f s tab lists what to mount where at boot.
+B: And D F dash h shows what's mounted?
+A: Exactly, disk free, with human-readable sizes. Last topic: file descriptors. When a program opens a file, the kernel gives it a small number, the file descriptor, and the program uses that number instead of the name. Every program starts with three already open: zero is standard input, the keyboard; one is standard output, the screen; two is standard error, where error messages go, also the screen.
+B: Zero, one, two. In, out, error.
+A: And redirection is built on those. Redirection connects a descriptor to a file instead of the terminal, and the program doesn't even notice. Command, less than, file reads input from the file. Command, greater than, file writes output to the file, and empties the file first. Two greater than signs append to the end instead.
+B: So one greater than sign overwrites and two add on. And there was a weird double less than one?
+A: The here document. Two less than signs, then a marker word like E O F: the input is the lines you type next, until a line with only that marker. And a number in front picks the descriptor: two greater than errors dot t x t sends only the error messages to a file.
+B: Recap time?
+A: Go for it.
+B: One: boot chain is BIOS or U E F I, boot loader like GRUB, kernel, then init with process I D one. Two: runlevels, zero off, one single user, three text, five graphical, six reboot. Three: login checks slash etc slash passwd and the password is in shadow. Four: file descriptors zero, one, two are standard input, standard output and standard error, and redirection uses them.
+A: And five: the M B R is the disk's first sector, with the partition table and the first stage of the boot loader, and GRUB reads the file system while LILO used a map of sectors. Next episode, we go deeper into bash and finally decode those r w x permission letters. See you then.

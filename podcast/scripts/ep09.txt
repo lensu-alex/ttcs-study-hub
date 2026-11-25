@@ -1,0 +1,62 @@
+# Episode 9: Data storage, block devices and file systems
+A: Welcome back to the T T C S podcast. This is episode nine, and today's lecture is about data storage: block devices and file systems.
+B: Hi, Sam here. So, where my files actually live when I close the laptop.
+A: Exactly. Two layers. Below, block devices: disks as the kernel sees them. Above, file systems: the structure placed on a disk so you can have files and directories. If you remember one chain from today, make it device, then format, then mount. And one idea: what journaling is for.
+B: Device, format, mount. Okay. Where do we start?
+A: With two kinds of memory. Main memory, the RAM, is the only large memory the processor can use directly. It's fast and random access, meaning any byte can be reached straight away. But it's volatile: its contents vanish when the power goes off. Secondary storage, like hard disks, S S Ds and U S B sticks, is larger, slower, and non-volatile, so it keeps data without power.
+B: What's inside a hard disk, physically?
+A: Several rigid discs called platters, coated with magnetic material, spinning on one axis. Each surface is divided into concentric circles called tracks. Each track is cut into sectors, the smallest unit you can read or write. And the same track on all the platters, taken together, is a cylinder. An S S D, a kind of N V M, non-volatile memory, has no moving parts, which is why it's so much faster.
+B: Why not use one memory that's fast, big and cheap?
+A: It doesn't exist. So computers use a hierarchy, a pyramid. At the top, registers and cache inside the processor, then main memory. Those are volatile and count as primary storage. Below that, S S Ds and hard disks are secondary storage. At the bottom, optical disks and magnetic tapes are tertiary storage: slow, cheap, used for archives. Going up is faster but smaller, and each level acts as a cache for the one below.
+B: Cache meaning a copy of things you use often, kept closer.
+A: Right. Files you read recently stay in RAM, so reading them again is instant. A device driver is the piece of the kernel that knows how to operate one kind of device controller, and gives the rest of the kernel the same simple interface, "read block n", no matter who made the disk.
+B: So what exactly is a block device?
+A: A device that transfers data in whole blocks, mainly disks. The transfer is usually done with D M A, direct memory access: a dedicated chip moves the blocks between disk and RAM, and the C P U is only told when it's finished. The older method, programmed I O, had the C P U copy every byte itself.
+B: So D M A is like hiring movers instead of carrying every box yourself.
+A: Exactly. In Unix, a device appears as a special file in slash dev, like slash dev slash s d a one, the first partition of the first disk. The kernel identifies a device by two numbers. The major number says which driver handles it, and the minor number says which unit of that kind it is.
+B: Major is the driver, minor is the specific unit. That sounds like a test question.
+A: It is. Now, the loop device. It makes an ordinary file look like a disk. A file can contain a whole file system, like the dot iso image of a C D, and with a loop device you can mount it and browse it without burning a disc. The command losetup connects a loop device to a file.
+B: Okay. So I have a disk. What can I do with it?
+A: Two things. Use it for files, in which case you first format it, meaning you write an empty file system structure onto it. The command is m k f s, make file system, for example m k f s dot ext four followed by the partition. Formatting erases whatever was there.
+B: And the second use?
+A: Swap space. No file system at all. The kernel uses it as overflow for RAM: when memory is full, it moves data that hasn't been used recently out to swap, and brings it back when needed. That's what lets programs use more memory than the machine physically has, which is virtual memory. You prepare it with mkswap and turn it on with swapon. And d f dash h shows how full each mounted file system is.
+B: Now files. What is a file, from the system's side?
+A: A container for data that must survive power off. You refer to it by name, and the file system translates the name into an inode, the kernel's internal record for that file. The inode holds the metadata: owner, permissions, size, times, and the list of disk blocks where the contents are stored.
+B: And the name is in the inode too.
+A: No, and that's a classic trap. The name lives in the directory, not in the inode. That's why one file can have several names, the hard links from lecture three.
+B: Right, the inode is the person, and the names are just entries in different address books.
+A: Exactly. To use a formatted disk, you mount it: you attach it to a directory, called the mountpoint. The reverse is u mount, spelled without the first n. And you can't unmount a file system that is busy, for example while a terminal has its current directory there.
+B: Oh, that's why daemons change directory to the root, from last episode.
+A: Exactly. Now, mounting at boot. That's slash etc slash fstab, the file systems table. It lists what to mount where, and at boot the system runs the equivalent of mount dash a, mount everything in fstab. Each line has six fields.
+B: Six. Go slowly.
+A: Field one, what to mount: a device, a remote directory, or better, a U U I D. Device names like s d a and s d b can change when you plug in another disk, but a U U I D is stored inside the file system and never changes. Field two: the mountpoint. Field three: the type, like ext four, vfat, or nfs. Field four: the options, usually just defaults.
+B: What does defaults include?
+A: A bundle: read and write, programs can run, mounted automatically at boot, only root may mount it, and a few more. Two other useful options: user lets an ordinary user mount it, and noauto means not at boot, only on request. Field five, dump, is for an old backup program and is practically always zero. Field six, pass, is the order in which f s c k checks file systems at boot: one for the root file system, two for the others, zero for never.
+B: And f s c k is?
+A: File system check. It looks for damage in a file system's internal structure and repairs what it can. Only run it on a file system that is not mounted.
+B: Why would a file system get damaged in the first place?
+A: This is the core idea. One change, like creating a file, needs several separate writes to the disk: the directory, the inode, the list of free blocks. If the power fails between two of those writes, the structures on disk no longer agree. The file system is inconsistent.
+B: Like the power going out when half the boxes are in the moving truck and half are still in the hallway.
+A: Exactly. The old cure was a full f s c k at the next boot, which on a big disk can take hours. The modern cure is journaling. Before touching the real structures, the system writes down what it's about to do in a special area called the journal. After a crash it just reads the journal and redoes the unfinished operations. Seconds instead of hours.
+B: How exactly does the journal work?
+A: Every metadata change is grouped into a transaction, a set of writes that must happen all together or not at all. The transaction is first written to the journal, and once it's there, it counts as committed. Later, in the background, the changes are applied to the real structures and the transaction is removed from the journal. After a crash, whatever is still in the journal gets replayed.
+B: So committed means the change is already on the real structures.
+A: No, careful. Committed means it's safely written in the journal. The real structures may not have changed yet. Ext four and x f s are journaling file systems.
+B: The slides had a story about deleting an open file, right?
+A: Yes. A program has a file open, and you delete it with r m. Its name disappears from the directory at once, but the kernel keeps the inode and data until the program closes the file. If the power goes off right then, you have an orphan: an inode still marked as used, with no name pointing to it. At the next boot, f s c k finds it and, since it can't know the name, puts it in a special directory called lost plus found.
+A: Now, file systems don't have to be on a disk. Tmpfs lives in RAM. Very fast, and everything in it disappears at unmount or reboot. If RAM gets tight, it can spill into swap. Slash run and often slash tmp are tmpfs.
+B: Is that the same as a RAM disk?
+A: No. A RAM disk is a fake disk in memory that you'd still have to format, while tmpfs is a ready file system.
+B: And distributed file systems?
+A: There, the files are on another machine. With N F S, the network file system, the server exports a directory and the client mounts it into its own tree. Each operation travels by R P C, remote procedure call. On the client, a stand-in function called a stub packs the arguments into a message, which is called marshalling. The server's stub unpacks it, calls the real function, and sends back the result.
+B: Last one, pseudo file systems.
+A: These store nothing on any disk. Their files are produced by the kernel at the moment you read them, so you can ask the kernel questions with plain cat and ls. Slash proc has one directory per running process, named after its P I D, plus system-wide files like slash proc slash cpuinfo. Slash sys is the kernel's catalogue of devices, drivers and modules.
+B: So slash proc is mostly about processes, and slash sys is mostly about devices.
+A: That's the comparison to remember. Let's recap.
+B: One: the memory hierarchy, from registers and RAM, which are volatile, down to disks and tapes, with each level caching the one below.
+A: Two: a block device is a file in slash dev, with a major number for the driver and a minor number for the unit. A loop device makes a file look like a disk.
+B: Three: device, format, mount. And the inode holds the metadata and block list, but not the name.
+A: Four: fstab has six fields, use a U U I D instead of a device name, and the last field is the f s c k order: one for root, two for others, zero for never.
+B: Five: journaling writes each change to the journal first, so after a crash you replay it in seconds instead of checking the whole disk for hours.
+A: And six: tmpfs is in RAM, N F S is on another machine, and slash proc and slash sys are windows into the kernel. Next episode: how C code becomes a running program, with compiling, linking, debugging and make.
+B: See you then.

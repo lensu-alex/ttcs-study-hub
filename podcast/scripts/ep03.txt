@@ -1,0 +1,74 @@
+# Episode 3: The command interpreter, files and permissions
+A: Welcome back to the T T C S podcast. I'm Alex.
+B: And I'm Sam. Last time we booted, logged in, and met the shell. Today I was promised permissions.
+A: You'll get them. Lecture three in one sentence: how to use bash well, meaning the environment, pipelines, background jobs and history, and then how Unix decides who may do what with a file, with file types, permissions and links.
+B: Two halves, then. Shell first?
+A: Shell first. Quick reminder: the shell works interactively or in batch, running a script. When it's ready, it shows a prompt: a dollar sign for a normal user, a hash sign for root. The prompt's text lives in a variable called P S one, and P S two is the continuation prompt, usually a greater than sign, shown when your command isn't finished yet.
+B: Okay. Then the environment. What is that exactly?
+A: The environment is a list of name equals value pairs that every program receives when it starts. It's how settings get passed around. The names are usually in capitals. You read a value by putting a dollar sign in front, so echo dollar SHELL prints slash bin slash bash.
+B: And PATH is the important one?
+A: Yes. PATH tells the shell in which directories to look for commands. When you type ls, the shell walks through the PATH directories until it finds a program called ls. Similar variables tell the library loader and the compiler G C C where to look.
+B: So any variable I make in the shell is in the environment?
+A: No, and this is a classic exam point. A plain shell variable stays inside the shell. Only exported variables are handed to the programs the shell starts. You use export, for example export NAME equals value, to turn it into an environment variable.
+B: Like a note on my desk versus a note I photocopy and hand to everyone I send on an errand.
+A: Exactly. The command env prints the whole environment. And in C, a program receives the environment as the third parameter of main: after arg C, the number of arguments, and arg V, the arguments themselves, comes env P, the environment strings.
+B: Then there were those dot files. Bashrc and friends.
+A: Those are lists of commands bash runs automatically. At login only, it reads slash etc slash profile, then your own dot bash underscore profile or dot profile. Every time a terminal opens, it reads dot bash R C. And at logout, dot bash underscore logout.
+B: So profile at login, bash R C every new terminal.
+A: Right. And if you edit dot bash R C, you can apply it without reopening the terminal by typing source dot bash R C, or the short form, a single dot, then dot bash R C.
+B: Why source and not just run it with bash?
+A: Because running it with bash starts a new process. When it exits, the settings vanish with it. Source runs the commands inside your current shell, so the settings stay.
+B: Now combining commands. The pipe symbol, right?
+A: Yes. A, pipe, B is a pipeline: the output of A becomes the input of B. And both run at the same time, which is what the slides mean by parallel execution. B reads A's output while it's being produced, like an assembly line.
+B: And the other symbols?
+A: A, pipe ampersand, B is the same, but the error messages of A go through the pipe too. A semicolon B runs A, then B, no matter what. A, double ampersand, B runs B only if A succeeded. And A, double pipe, B runs B only if A failed.
+B: How does the shell know if something succeeded?
+A: Every command ends with a number called its exit status. Zero means success, anything else means failure. The shell keeps the last one in dollar question mark.
+B: Wait, zero is success? In C, zero is false.
+A: Exactly, and that's the trap. There's one way to succeed and many ways to fail, so the non-zero numbers can say which failure happened.
+B: Makes sense. Now job control.
+A: A command normally runs in the foreground: it owns the terminal and you wait for it. Job control lets you run several at once. Put an ampersand after a command and it runs in the background, and you get your prompt back immediately.
+B: And if I already started something in the foreground?
+A: Press control Z. That pauses it. Technically it sends the signal sig T S T P, terminal stop. Then the command jobs lists your jobs with numbers. F G percent two brings job two to the foreground. B G percent two lets it continue in the background. And kill percent two ends it.
+B: So control Z is the pause button.
+A: Right. Now history. Bash remembers what you typed. Exclamation mark forty two runs command number forty two again. Exclamation mark G C C reruns the most recent command starting with G C C.
+B: And there's a trick for typos?
+A: Caret, old, caret, new. It repeats the previous command with old replaced by new. And control R lets you search backwards through your history as you type.
+B: Control R will save my life. Now, why does C D have to be a built-in?
+A: Good question, and exam material. A separate program could only change its own current directory, not the shell's. So C D must be built into the shell.
+B: Like asking a friend to walk to the kitchen for you, and then expecting yourself to be in the kitchen.
+A: Ha, exactly. Other built-ins: alias gives a short name to a long command, so alias l equals ls dash l. Exit three ends the shell with status three. And exec, followed by a command, replaces the shell with that program. When the program ends, there's no shell left to return to.
+B: So exec firefox, then closing Firefox closes my terminal session?
+A: Right. External commands are the opposite: programs on disk, found through PATH and started as new processes.
+B: Okay, second half. Files.
+A: In Unix, almost everything is presented as a file. There are seven types. A regular file is ordinary data, text or binary. A directory is a list of file names; programs can read it, but only the kernel writes to it. A device file stands for hardware. Character devices give bytes one at a time, like a terminal. Block devices work in fixed-size blocks, like disks.
+B: Keep going.
+A: A FIFO, or named pipe, is a channel for two programs to talk. The ordinary pipe symbol is an anonymous pipe and only connects related processes, but a FIFO has a name on disk, so any two programs can use it. A socket is similar, but it can also connect two different machines. And a symbolic link is a tiny file that contains the name of another file, a shortcut.
+B: And ls dash l shows which one is which?
+A: In the first character of each line. Dash for a regular file, d for directory, c for character device, b for block device, p for a FIFO, s for socket, and l for a symbolic link.
+B: P for pipe, not f for FIFO. Noted. Now permissions.
+A: First, identities. A process carries two: the real U I D, who actually started it, and the effective U I D, the identity the kernel uses for permission checks. Normally they're the same.
+B: When aren't they?
+A: With set U I D programs. The file has a special flag saying: while this runs, the effective U I D becomes the U I D of the file's owner, not of whoever started it. The classic example is passwd. To change your password, it must write slash etc slash shadow, which only root may touch. The passwd program is owned by root and has the set U I D flag, so while it runs it acts as root.
+B: Like a guest borrowing the hotel master key, but only for one supervised job.
+A: Nice. Now the bits. Each file has three sets of permissions: for the user who owns it, for its group, and for others. Each set has three bits: read, write and execute. Ls dash l shows them as nine letters, for example r w x, r dash x, r dash dash.
+B: And chmod changes them.
+A: In two notations. Letters: chmod u plus r w gives the owner read and write. Chmod o minus r w x takes everything away from others. Or octal: read is four, write is two, execute is one, and you add them up for each set.
+B: So seven is read, write, execute. Five is read and execute. So chmod seven five five is r w x, r dash x, r dash x.
+A: Perfect. And six four four is read and write for the owner, read only for everyone else.
+B: Okay, I'll be honest, I once thought seven seven seven was the safe setting because it's the biggest.
+A: It's the opposite: seven seven seven means everybody can do everything. There are also three special bits: set U I D, set G I D, and the sticky bit. On a shared directory like slash tmp, the sticky bit means only a file's owner may delete it.
+B: Then umask. That one confused me.
+A: Umask decides the permissions a new file starts with. It's a mask of bits to remove. New files start from six six six and new directories from seven seven seven. Then the umask bits are switched off. Umask zero two two removes write for group and others, so files get six four four and directories seven five five.
+B: So umask zero seven seven makes everything private: six hundred for files.
+A: Exactly. Now the last idea: i-nodes and links. Inside the kernel, a file is an i-node, an index node, a record with the owner, the permissions, and where the data is. A name in a directory is only a pointer to an i-node, called a hard link.
+B: So the name isn't the file.
+A: Right. One file can have several names: L N, old, new, adds a second one, and both are equal, neither is the original. The R M command removes one name. The data disappears only when the last name is gone.
+B: Like one friend saved under two contact names. Deleting a contact doesn't delete the friend.
+A: Good. And here's an exam favourite: to delete a file, you need permissions on the directory, not on the file. Write, because you're changing the directory's list, and execute, which on a directory is called search, the right to go into it.
+B: And symbolic links fix something about hard links?
+A: Hard links have two limits: both names must be on the same file system, and you can't hard-link directories. A symbolic link avoids both, because it's just a small file holding a path. You make one with L N dash s. Most commands follow the link to the target, but R M on a link deletes only the shortcut. And if the target is deleted, the link stays but points to nothing: a broken link.
+B: Recap. One: only exported variables reach child programs, and PATH is where the shell looks for commands. Two: exit status zero means success, the opposite of C, and double ampersand and double pipe depend on it. Three: C D must be built in, because a separate program can't change the shell's directory.
+A: Keep going.
+B: Four: chmod octal, read four, write two, execute one, so seven five five and six four four, and umask zero two two gives six four four. Five: set U I D makes the effective U I D the file owner's, like passwd. Six: hard links are equal names for one i-node, and deleting needs write and execute on the directory.
+A: Excellent. Next episode: searching with grep and find, what a process really is, and how processes talk through pipes and signals. See you there.

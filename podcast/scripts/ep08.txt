@@ -1,0 +1,69 @@
+# Episode 8: Daemons and time management
+A: Welcome back to the T T C S podcast. This is episode eight, covering lecture eight: daemons and time management.
+B: Hi, Sam here. Last time we learned how the system starts services. So today is the daemons themselves?
+A: Two topics. First, daemons: what makes a program a daemon and where its messages go. Second, time: three schedulers, cron, anacron and at, and then the clocks themselves.
+B: And I've heard the cron time format is a favourite exam question.
+A: It really is, so we'll spend proper time on it. But first: a daemon is a process that runs in the background with no terminal attached. Nobody types into it, and it prints on no screen. It just waits for work.
+B: Why does it matter? Couldn't I just start a server in a terminal window and leave it there?
+A: Three bad things would happen. Control C or Control Z could stop it by accident. Closing the terminal would kill it. And its messages would land in the middle of whatever you're typing.
+B: Like a roommate who shouts updates while you're writing an essay.
+A: Exactly. So a program becomes a daemon in five steps, and the reason for each is what you should learn. One: detach from the terminal, so keyboard signals and closing the terminal no longer reach it. Two: change the working directory to slash, the root directory.
+B: Why the root?
+A: Because a running process keeps its current directory busy, and a file system in use can't be unmounted. If the daemon stayed in a directory on a U S B stick, you could never unmount that stick. The root is never unmounted, so it's the safe choice.
+B: Clever. Step three?
+A: Close all the file descriptors it inherited from the shell. Step four: reconnect standard input, output and error to slash dev slash null. Reading from it gives end of file, and writing to it is thrown away.
+B: Wait, if it closed everything, why not leave zero, one and two closed?
+A: Because library code that tries to print something could fail or crash. Pointing them at slash dev slash null keeps those descriptors valid, and the output just disappears harmlessly. And step five: since there's no screen, send messages to the logging daemon.
+B: So: detach, change to root, close descriptors, reconnect to dev null, use the logger.
+A: That logging daemon is syslog d, on Linux usually r syslog d. Programs send it messages with the syslog function, and from the shell you use the command logger. Its configuration file, syslog dot conf, says what to do with each kind of message: append it to a file, show it on the console, or forward it to another machine.
+B: If I edit that file, do I restart the daemon?
+A: You send it the hangup signal, SIG H U P, with kill dash H U P and the process I D, and it re-reads its configuration. Most daemons follow that convention. Modern systems wrap it as systemctl reload.
+B: So kill doesn't always kill. Sometimes it just says "wake up and reread your settings".
+A: Right. Now, every log message carries two labels, written as facility dot level. That pair is called the priority.
+B: I'd have guessed priority meant just how serious it is.
+A: A lot of people think that, which makes it a good exam trap. The level is how serious it is; the priority is the whole pair. Levels go from zero, the worst, to seven: emerg, alert, crit, err, warning, notice, info, debug. The default is five, notice: normal but worth noting.
+B: Like hospital triage, but for software.
+A: Good way to remember it. The facility says what kind of program sent it: kern for the kernel, auth for logins, cron, mail, user for ordinary programs, which is the default, and local zero to local seven for your own use. A configuration line says which messages, then where. For example, kern dot star, then slash dev slash console, sends kernel messages of any level to the console.
+B: And the log files end up where?
+A: In slash var slash log. To watch one live, use tail dash f on slash var slash log slash syslog; dash f means follow, so new messages appear as they're written. A nice exercise is to run that in one terminal and logger hello in another, and watch hello appear.
+B: Okay, I'm ready for time. Cron.
+A: Cron d is the daemon that runs commands on a schedule: every night, every Monday, every ten minutes. The name comes from the Greek chronos, time. The schedules are tables called crontabs. Each user has one, but you edit it with the crontab command, not directly. The system also has slash etc slash crontab, plus directories like cron dot daily and cron dot weekly; any script you drop in one runs that often.
+B: How does cron d actually work?
+A: Once a minute it wakes up, looks through all the crontabs for commands scheduled for this minute, and runs them. That's why one minute is the finest schedule cron can do. Whatever a command prints is e-mailed to the crontab's owner, or to the address in MAILTO. And it notices edited crontabs by itself, so you never need to restart it.
+B: E-mail? That feels very nineteen nineties.
+A: It's old, but a background job has no screen, so mail is its way of reporting. Now, crontab dash e edits your crontab, crontab dash l lists it, and crontab dash r removes it, entirely and without asking.
+B: And e and r are right next to each other on the keyboard.
+A: Exactly, and many people have lost their crontab that way, so keep a backup. The admin can also control access: if slash etc slash cron dot allow exists, only those users may use cron; otherwise the users in cron dot deny may not.
+B: What goes inside a crontab?
+A: Comments, variable settings like SHELL, PATH and MAILTO, and the scheduled commands. Two gotchas with the variables. Dollar signs aren't expanded, so you can't build a PATH from your existing PATH. And cron's default PATH is tiny, only slash usr slash bin and slash bin. So use full paths for your scripts. That's the usual reason for "it works in my terminal but not in cron".
+B: Now the famous five fields.
+A: Five time fields, then the command. In order: minute, zero to fifty nine; hour, zero to twenty three; day of the month; month; and day of the week, zero to seven, where both zero and seven mean Sunday.
+B: Minute, hour, day, month, weekday. Smallest to biggest, weekday tacked on at the end.
+A: That's the way to remember it. In each field you can write a value, a star meaning every value, a range like eight dash eleven, a list with commas, or a step, like star slash ten, meaning every ten.
+B: Let me try one. Five, zero, star, star, star. That's five in the morning every day?
+A: Close, but you swapped them. The first field is the minute, so it's minute five of hour zero: five past midnight, every night.
+B: Ugh, minute first. Give me another.
+A: Zero, twenty two, star, star, one dash five: ten in the evening, Monday to Friday. And twenty three, then zero dash twenty three slash two, then star star star: minute twenty three of every second hour.
+B: What about the second Saturday of the month? I'd put eight dash fourteen in the day field and Saturday in the weekday field.
+A: That's exactly the trap. If you restrict both day fields, the command runs when either one matches. You'd get every day from the eighth to the fourteenth, plus every Saturday. The slides solve it by scheduling days eight to fourteen and letting the command check that today is Saturday. Also, in the command part, a percent sign becomes a newline, so a real percent needs a backslash.
+B: Okay. Why do we need anacron as well?
+A: Because cron assumes the machine is always on. If your laptop is closed at three in the morning, the three o'clock job is simply skipped. Anacron asks a different question: "has this job run in the last N days?" If not, it runs it.
+B: Like a plant that needs water once a week. You don't care which minute, just that it's not forgotten for seven days.
+A: Lovely. A line of slash etc slash anacrontab has four fields: period in days, a delay in minutes, a job I D, and the command. So seven, ten, weekly, then a backup script means: run the backup if it hasn't run in seven days, ten minutes after anacron starts. It remembers the date of each run in a file named after the job I D.
+B: And the third one, at?
+A: At runs a command once, at a time you choose. The daemon is at d. You type at followed by a time, like now plus one minute, or three p m tomorrow, then the commands, and finish with Control D. Atq lists your waiting jobs, and atrm followed by a number cancels one.
+B: So: cron repeats on a schedule, anacron repeats every N days on a machine that isn't always on, and at runs something once.
+A: That's exactly the comparison they like to ask. Last topic: clocks. A computer has two. The hardware clock is a chip with a battery that keeps time while the machine is off, also called the R T C, real-time clock. The system clock is kept by the kernel while the machine runs, driven by a timer interrupt, and it's set from the hardware clock at boot.
+B: And how do I manage the hardware clock?
+A: With hwclock. Hwclock dash dash h c to sys copies hardware to system, dash dash sys to h c goes the other way, and dash dash adjust corrects drift. Every cheap clock runs a bit fast or slow, and the measured error is stored in slash etc slash adjtime.
+B: How does Linux store the time internally? As a date?
+A: As one number: seconds since the first of January nineteen seventy, midnight, a moment called the Unix epoch. The date command prints it readably. With a plus sign and codes you choose the format; watch out, capital M is minutes and small m is the month.
+B: And the time command?
+A: Time followed by a command runs it and reports three numbers. Real is wall-clock time. User is C P U time in the program's own code. Sys is C P U time the kernel spent working for it. Time sleep five shows real about five seconds, but user and sys almost zero, because the program was waiting, not computing.
+B: Let me recap. One: a daemon is a background process with no terminal, made in five steps: detach, change to root, close descriptors, reconnect zero one two to dev null, and log through syslog d.
+A: Two: a log priority is facility dot level, levels zero emerg to seven debug, default five notice, logs in slash var slash log.
+B: Three: crontab fields are minute, hour, day of month, month, day of week. Minute first! And if both day fields are set, either matching is enough.
+A: Four: cron's PATH is tiny and dollar signs aren't expanded, so use full paths. Five: cron repeats, anacron catches up on machines that were off, at runs once.
+B: And six: the battery hardware clock versus the kernel's system clock, counting seconds since nineteen seventy.
+A: Perfect. Next episode, we go down to where data actually lives: block devices, file systems, mounting and journaling.
+B: See you there.
