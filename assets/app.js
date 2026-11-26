@@ -489,7 +489,10 @@ function quizRun(key) {
 /* ---------- flashcards ---------- */
 function cards() {
   setNav('cards');
-  let lec = store.get('cards.lec', 0), dir = store.get('cards.dir', 'recall'), skip = store.get('cards.skip', false), kind = store.get('cards.deck', 'theory');
+  let lecs = store.get('cards.lecs', null), dir = store.get('cards.dir', 'recall'), skip = store.get('cards.skip', false), kind = store.get('cards.deck', 'theory');
+  if (!Array.isArray(lecs)) { const old = store.get('cards.lec', 0); lecs = old ? [old] : []; }
+  lecs = lecs.filter(n => LECTURES.some(d => d.n === n));
+  const inLec = c => !lecs.length || lecs.includes(c.l);
   const known = store.get('known', {});
   let deck = [], i = 0, open = false;
   const ASK = { c: 'Which command?', s: 'How do you write it?', f: 'Which file or path?', n: 'What is the value?' };
@@ -500,27 +503,29 @@ function cards() {
     <header class="page-head"><h1>Flashcards</h1><p>${THEORY.length} theory questions and ${CMDS.length} commands, files and numbers from the slides. Flip, judge yourself honestly, move on.</p></header>
     <div class="filters">
       <select id="fDeck" aria-label="Deck"><option value="theory">Theory questions</option><option value="cmds">Commands, files, numbers</option><option value="all">Both</option></select>
-      <select id="fLec" aria-label="Lecture"><option value="0">All lectures</option>${LECTURES.map(d => `<option value="${d.n}">Lecture ${d.n}</option>`).join('')}</select>
       <select id="fDir" aria-label="Direction"><option value="recall">Show the meaning, recall the command</option><option value="explain">Show the command, explain it</option></select>
       <label class="check"><input id="fSkip" type="checkbox"> Hide cards I know</label>
     </div>
+    <div class="lec-pick" id="fLecs" role="group" aria-label="Lectures"><span class="lec-pick-label">Lectures</span><button type="button" class="lec-chip" data-n="0">All</button>${LECTURES.map(d => `<button type="button" class="lec-chip" data-n="${d.n}" title="${esc(d.title)}">${d.n}</button>`).join('')}</div>
     <div id="cardArea"></div>
   </section>`;
-  $('#fLec').value = lec; $('#fDir').value = dir; $('#fSkip').checked = skip; $('#fDeck').value = kind;
+  $('#fDir').value = dir; $('#fSkip').checked = skip; $('#fDeck').value = kind;
+  const showLecs = () => $$('#fLecs .lec-chip').forEach(b => { const n = +b.dataset.n, on = n ? lecs.includes(n) : !lecs.length; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
+  showLecs();
   const showDir = () => { $('#fDir').hidden = kind === 'theory'; };
   showDir();
 
-  const build = () => { deck = shuffle(pool().filter(c => (!lec || c.l === lec) && (!skip || !known[c.key]))); i = 0; open = false; draw(); };
+  const build = () => { deck = shuffle(pool().filter(c => inLec(c) && (!skip || !known[c.key]))); i = 0; open = false; draw(); };
   const draw = () => {
     const area = $('#cardArea');
-    if (!deck.length) { area.innerHTML = `<div class="empty"><h2>No cards left here</h2><p>You have marked every card in this selection as known.</p><button class="btn" id="resetKnown" type="button">Start over with all of them</button></div>`; $('#resetKnown').onclick = () => { pool().forEach(c => { if (!lec || c.l === lec) delete known[c.key]; }); store.set('known', known); build(); }; return; }
+    if (!deck.length) { area.innerHTML = `<div class="empty"><h2>No cards left here</h2><p>You have marked every card in this selection as known.</p><button class="btn" id="resetKnown" type="button">Start over with all of them</button></div>`; $('#resetKnown').onclick = () => { pool().forEach(c => { if (inLec(c)) delete known[c.key]; }); store.set('known', known); build(); }; return; }
     if (i >= deck.length) { area.innerHTML = `<div class="empty"><h2>End of the deck</h2><p>${deck.filter(c => known[c.key]).length} of ${deck.length} marked as known.</p><button class="btn" id="reshuffle" type="button">Shuffle and go again</button></div>`; $('#reshuffle').onclick = build; return; }
     const c = deck[i], theory = c.k === 't', recall = dir === 'recall';
     const cmd = `<code class="card-cmd">${esc(c.c)}</code>`, meaning = `<span class="card-text">${esc(c.d)}</span>`;
     const front = theory ? `<span class="card-text">${fmt(c.q)}</span>` : recall ? meaning : cmd;
     const back = theory ? `<span class="card-answer">${fmt(c.a)}</span>` : recall ? cmd : meaning;
     area.innerHTML = `
-      <div class="deck-meta"><span>Card ${i + 1} of ${deck.length}</span><span>${pool().filter(x => known[x.key] && (!lec || x.l === lec)).length} known</span></div>
+      <div class="deck-meta"><span>Card ${i + 1} of ${deck.length}</span><span>${pool().filter(x => known[x.key] && inLec(x)).length} known</span></div>
       <button class="card${open ? ' open' : ''}" id="card" type="button" aria-label="Flip the card">
         <span class="card-tag">Lecture ${c.l} · ${KIND[c.k]}</span>
         ${theory ? '' : `<span class="card-ask">${recall ? ASK[c.k] : 'What does it do?'}</span>`}
@@ -537,7 +542,13 @@ function cards() {
   const judge = ok => { const c = deck[i]; if (!c) return; if (ok) known[c.key] = 1; else delete known[c.key]; store.set('known', known); i++; open = false; draw(); };
 
   $('#fDeck').onchange = e => { kind = e.target.value; store.set('cards.deck', kind); showDir(); build(); };
-  $('#fLec').onchange = e => { lec = +e.target.value; store.set('cards.lec', lec); build(); };
+  $('#fLecs').onclick = e => {
+    const b = e.target.closest('.lec-chip'); if (!b) return;
+    const n = +b.dataset.n;
+    lecs = !n ? [] : lecs.includes(n) ? lecs.filter(x => x !== n) : lecs.concat(n).sort((a, b) => a - b);
+    if (lecs.length === LECTURES.length) lecs = [];
+    store.set('cards.lecs', lecs); showLecs(); build();
+  };
   $('#fDir').onchange = e => { dir = e.target.value; store.set('cards.dir', dir); open = false; draw(); };
   $('#fSkip').onchange = e => { skip = e.target.checked; store.set('cards.skip', skip); build(); };
   const onKey = e => {

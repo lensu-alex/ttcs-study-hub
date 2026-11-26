@@ -87,6 +87,11 @@ button, input, select { font: inherit; color: inherit; }
 .filters input[type="search"], .filters select { height: 38px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .filters input[type="search"] { flex: 1; min-width: 200px; }
 .check { display: inline-flex; align-items: center; gap: 7px; font-size: 14.5px; color: var(--muted); }
+.lec-pick { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: -8px 0 20px; }
+.lec-pick-label { font-size: 14.5px; color: var(--muted); margin-right: 4px; }
+.lec-chip { min-width: 38px; height: 34px; padding: 0 10px; border: 1px solid var(--line); border-radius: 99px; background: var(--surface); color: var(--muted); font-size: 14px; cursor: pointer; }
+.lec-chip:hover { border-color: var(--accent); color: var(--ink); }
+.lec-chip.on { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
 .callout { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: space-between; padding: 16px 18px; background: var(--accent-soft); border-radius: 12px; margin-top: 16px; }
 
 /* ---- home ---- */
