@@ -2,10 +2,11 @@
 
 **State:** TTCS study hub, live on GitHub Pages (https://lensu-alex.github.io/ttcs-study-hub/). Lectures 1–11 covered.
 
-**Last change (2026-11-26):** Flashcards can now mix lectures: the lecture dropdown became a row of toggle chips
-(All, 1–11); pick any combination, stored as `cards.lecs` in localStorage (old single `cards.lec` is migrated).
-Assets at `?v=8`. Podcast tab (2026-11-25) unchanged: scripts in `podcast/scripts/`, mp3s in `podcast/audio/`,
-`tools/podcast.py` renders them.
+**Last change (2026-11-26):** Flashcards keep your place: each selection (deck + lectures + hide-known) stores its
+shuffled order and position in `cards.sessions` (last 12 kept), so leaving or reloading resumes on the same card;
+"Shuffle, start over" restarts. New "Your progress" box at the bottom of Flashcards saves all `ttcs.*` localStorage
+to a .json file and loads it on another device (known cards from both devices are merged). Assets at `?v=9`.
+Earlier the same day: lecture chips (All, 1–11) in `cards.lecs`. Podcast tab unchanged.
 
 **Next:** when a new lecture arrives, follow README.txt (PDF → build.py → notes, glossary, quiz, commands,
 theory cards and a podcast episode), bump `?v=N`, commit and push.

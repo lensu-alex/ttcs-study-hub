@@ -508,6 +508,7 @@ function cards() {
     </div>
     <div class="lec-pick" id="fLecs" role="group" aria-label="Lectures"><span class="lec-pick-label">Lectures</span><button type="button" class="lec-chip" data-n="0">All</button>${LECTURES.map(d => `<button type="button" class="lec-chip" data-n="${d.n}" title="${esc(d.title)}">${d.n}</button>`).join('')}</div>
     <div id="cardArea"></div>
+    <section class="backup" id="backup"></section>
   </section>`;
   $('#fDir').value = dir; $('#fSkip').checked = skip; $('#fDeck').value = kind;
   const showLecs = () => $$('#fLecs .lec-chip').forEach(b => { const n = +b.dataset.n, on = n ? lecs.includes(n) : !lecs.length; b.classList.toggle('on', on); b.setAttribute('aria-pressed', on); });
@@ -515,7 +516,26 @@ function cards() {
   const showDir = () => { $('#fDir').hidden = kind === 'theory'; };
   showDir();
 
-  const build = () => { deck = shuffle(pool().filter(c => inLec(c) && (!skip || !known[c.key]))); i = 0; open = false; draw(); };
+  // Each selection (deck, lectures, hide-known) keeps its own shuffled order and position, so you can leave and come back.
+  const sig = () => [kind, lecs.join(','), skip ? 1 : 0].join('|');
+  const save = () => {
+    const all = store.get('cards.sessions', {});
+    delete all[sig()];
+    all[sig()] = { order: deck.map(c => c.key), i, t: Date.now() };
+    const keys = Object.keys(all); keys.slice(0, Math.max(0, keys.length - 12)).forEach(k => delete all[k]);
+    store.set('cards.sessions', all);
+  };
+  const resume = () => {
+    const s = store.get('cards.sessions', {})[sig()];
+    if (!s || !Array.isArray(s.order)) return false;
+    const byKey = new Map(pool().map(c => [c.key, c]));
+    deck = []; i = 0;
+    s.order.forEach((k, at) => { const c = byKey.get(k); if (c) deck.push(c); if (at < s.i && c) i++; });
+    if (!deck.length) return false;
+    open = false; draw(); return true;
+  };
+  const build = () => { deck = shuffle(pool().filter(c => inLec(c) && (!skip || !known[c.key]))); i = 0; open = false; save(); draw(); };
+  const load = () => { if (!resume()) build(); };
   const draw = () => {
     const area = $('#cardArea');
     if (!deck.length) { area.innerHTML = `<div class="empty"><h2>No cards left here</h2><p>You have marked every card in this selection as known.</p><button class="btn" id="resetKnown" type="button">Start over with all of them</button></div>`; $('#resetKnown').onclick = () => { pool().forEach(c => { if (inLec(c)) delete known[c.key]; }); store.set('known', known); build(); }; return; }
@@ -525,7 +545,7 @@ function cards() {
     const front = theory ? `<span class="card-text">${fmt(c.q)}</span>` : recall ? meaning : cmd;
     const back = theory ? `<span class="card-answer">${fmt(c.a)}</span>` : recall ? cmd : meaning;
     area.innerHTML = `
-      <div class="deck-meta"><span>Card ${i + 1} of ${deck.length}</span><span>${pool().filter(x => known[x.key] && inLec(x)).length} known</span></div>
+      <div class="deck-meta"><span>Card ${i + 1} of ${deck.length}</span><span>${pool().filter(x => known[x.key] && inLec(x)).length} known · <button class="linkish" id="restart" type="button">Shuffle, start over</button></span></div>
       <button class="card${open ? ' open' : ''}" id="card" type="button" aria-label="Flip the card">
         <span class="card-tag">Lecture ${c.l} · ${KIND[c.k]}</span>
         ${theory ? '' : `<span class="card-ask">${recall ? ASK[c.k] : 'What does it do?'}</span>`}
@@ -535,22 +555,22 @@ function cards() {
       <div class="card-actions">
         ${open ? `<button class="btn ghost" id="again" type="button">Still learning <kbd>1</kbd></button><button class="btn" id="got" type="button">Got it <kbd>2</kbd></button><a class="card-src" href="#/doc/c${c.l}/${c.p}">Slide ${c.p} →</a>` : '<button class="btn" id="flip" type="button">Show answer</button>'}
       </div>`;
-    $('#card').onclick = flip;
+    $('#card').onclick = flip; $('#restart').onclick = build;
     if (open) { $('#again').onclick = () => judge(false); $('#got').onclick = () => judge(true); } else $('#flip').onclick = flip;
   };
   const flip = () => { if (i < deck.length) { open = !open; draw(); } };
-  const judge = ok => { const c = deck[i]; if (!c) return; if (ok) known[c.key] = 1; else delete known[c.key]; store.set('known', known); i++; open = false; draw(); };
+  const judge = ok => { const c = deck[i]; if (!c) return; if (ok) known[c.key] = 1; else delete known[c.key]; store.set('known', known); i++; open = false; save(); draw(); };
 
-  $('#fDeck').onchange = e => { kind = e.target.value; store.set('cards.deck', kind); showDir(); build(); };
+  $('#fDeck').onchange = e => { kind = e.target.value; store.set('cards.deck', kind); showDir(); load(); };
   $('#fLecs').onclick = e => {
     const b = e.target.closest('.lec-chip'); if (!b) return;
     const n = +b.dataset.n;
     lecs = !n ? [] : lecs.includes(n) ? lecs.filter(x => x !== n) : lecs.concat(n).sort((a, b) => a - b);
     if (lecs.length === LECTURES.length) lecs = [];
-    store.set('cards.lecs', lecs); showLecs(); build();
+    store.set('cards.lecs', lecs); showLecs(); load();
   };
   $('#fDir').onchange = e => { dir = e.target.value; store.set('cards.dir', dir); open = false; draw(); };
-  $('#fSkip').onchange = e => { skip = e.target.checked; store.set('cards.skip', skip); build(); };
+  $('#fSkip').onchange = e => { skip = e.target.checked; store.set('cards.skip', skip); load(); };
   const onKey = e => {
     if (typing(e) || e.metaKey || e.ctrlKey || e.altKey) return;
     if (e.key === ' ' || e.key === 'Enter') { if (onControl(e)) return; e.preventDefault(); flip(); }
@@ -559,7 +579,39 @@ function cards() {
   };
   document.addEventListener('keydown', onKey);
   teardown = () => document.removeEventListener('keydown', onKey);
-  build();
+  backup($('#backup'));
+  load();
+}
+
+/* ---------- progress backup (moves progress between devices: phone, laptop) ---------- */
+function backup(el) {
+  el.innerHTML = `<h2>Your progress</h2><p>Progress is saved in this browser automatically. To carry it to another device, save it to a file and load that file there (AirDrop, email or a cloud drive all work). This covers flashcards, quiz scores, slides read and podcast positions.</p>
+    <div class="backup-btns"><button class="btn ghost" id="bkSave" type="button">Save progress to a file</button><button class="btn ghost" id="bkLoad" type="button">Load progress from a file</button><input id="bkFile" type="file" accept=".json,application/json" hidden></div><p class="backup-msg" id="bkMsg" role="status"></p>`;
+  const msg = t => { $('#bkMsg', el).textContent = t; };
+  $('#bkSave', el).onclick = () => {
+    const data = {};
+    try { for (let k = 0; k < localStorage.length; k++) { const key = localStorage.key(k); if (key.startsWith('ttcs.')) data[key] = localStorage.getItem(key); } } catch (e) { msg('This browser is not letting the site read its storage.'); return; }
+    const blob = new Blob([JSON.stringify({ app: 'ttcs-study-hub', saved: new Date().toISOString(), data }, null, 1)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob); a.download = `ttcs-progress-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.append(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    msg(`Saved ${Object.keys(store.get('known', {})).length} known cards and the rest of your progress.`);
+  };
+  $('#bkLoad', el).onclick = () => $('#bkFile', el).click();
+  $('#bkFile', el).onchange = async e => {
+    const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+    let file;
+    try { file = JSON.parse(await f.text()); } catch (err) { msg('That file is not a progress file.'); return; }
+    if (!file || file.app !== 'ttcs-study-hub' || typeof file.data !== 'object') { msg('That file is not a progress file from this site.'); return; }
+    // Merge rather than overwrite: known cards from both devices are kept, everything else takes the file's value.
+    const mine = store.get('known', {});
+    try {
+      Object.entries(file.data).forEach(([k, v]) => { if (k.startsWith('ttcs.') && typeof v === 'string') localStorage.setItem(k, v); });
+    } catch (err) { msg('This browser would not store the progress (private mode?).'); return; }
+    store.set('known', Object.assign(store.get('known', {}), mine));
+    route();
+    const m = $('#bkMsg'); if (m) m.textContent = `Loaded progress saved on ${new Date(file.saved).toLocaleString()}.`;
+  };
 }
 
 /* ---------- cheat sheet ---------- */
